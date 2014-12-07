@@ -1,0 +1,2 @@
+source src/drivers/ati/radeon/Kconfig
+source src/drivers/ati/ragexl/Kconfig
