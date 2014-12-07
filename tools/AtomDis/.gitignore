@@ -1,0 +1,4 @@
+*.o
+*.d
+atomdis
+datastructs_gen.c
