@@ -22,4 +22,12 @@ sed "s/.*5420.*CLEAR.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*/\tmy_radeon_write8\(0x\1, 
 sed "s/.*5428.*CLEAR.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*/\tmy_radeon_write8\(0x\1, BYTE_1, 0);/g" |
 sed "s/.*5430.*CLEAR.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*/\tmy_radeon_write8\(0x\1, BYTE_2, 0);/g" |
 sed "s/.*5408.*CLEAR.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*/\tmy_radeon_write16\(0x\1, BYTES_01, 0);/g" |
-sed "s/.*5400.*CLEAR.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*/\tmy_radeon_write32\(0x\1, 0);/g"
+sed "s/.*5400.*CLEAR.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*/\tmy_radeon_write32\(0x\1, 0);/g" |
+sed "s/.*command_table.*(\([0-9,a-z,_,/,A-Z]*\)).*/void my_\1(uint32 *param)\n{/g" |
+perl -i -p -e "s/.* Size .*\n//g" |
+perl -i -p -e "s/.* Format Rev.*\n//g" |
+perl -i -p -e "s/.* Param Rev.*\n//g" |
+perl -i -p -e "s/.* Attributes:.*\n//g" |
+perl -i -p -e "s/.* Content Rev.*\n//g" |
+perl -i -p -e "s/.* Table update indicator.*\n//g" |
+sed "s/.*Parameter space size[^0-9]*\([0-9]*\).*/\t\/\* sizeof(param) == \1 \*\//g"
