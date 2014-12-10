@@ -1,4 +1,9 @@
-sed "s/.*\0105.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write32\(0x\1, 0x\2\);/g" $1 |
+sed "s/.*\0125.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write8\(0x\1, BYTE_0, 0x\2\);/g" $1 |
+sed "s/.*\0165.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write8\(0x\1, BYTE_1, 0x\2\);/g" |
+sed "s/.*\01a5.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write8\(0x\1, BYTE_2, 0x\2\);/g" |
+sed "s/.*\010d.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write16\(0x\1, BYTES_01, 0x\2\);/g" |
+sed "s/.*\018d.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write16\(0x\1, BYTES_23, 0x\2\);/g" |
+sed "s/.*\0105.*MOVE.*reg\[\([0-9,a-f]*\)][^0-9,a-f]*\([0-9,a-f]*\)/\tmy_radeon_write32\(0x\1, 0x\2\);/g" |
 sed "s/.*52.*CALL_TABLE.*(\([0-9,a-z,_,/,A-Z]*\))/\tmy_exec_table(\1);/g" |
 sed "s/.*51.*DELAY_MicroSec[^0-9,a-f]*\([0-9,a-f]*\)/\tmy_udelay(0x\1);/g" |
 sed "s/.*5b.*EOT.*/\treturn;\n}/g" |
