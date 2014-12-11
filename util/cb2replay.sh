@@ -40,7 +40,7 @@ void run_replay(void)
 
 echo "$header"
 
-egrep "c000:[0-9,a-f]{4}" $1 |
+egrep "c000:[0-9,a-f]{4}|x86emuOp_halt|runInt[0-9,a-f]{2}.*starting" $1 |
 grep -v "Running option rom at c000:0003" |
 sed "s/c000\:[0-9,a-f]\{4\}\ /\t/g" |
 
@@ -58,6 +58,9 @@ sed "s/inb(0x03c3);[^\r]*\r\tinl($stsport);[^\r]*/sync_read();/g" |
 sed "s/sync_read();[^\r]*\r\tradeon_write(/radeon_write_sync(/g" |
 sed "s/sync_read();[^\r]*\r\tradeon_read(/radeon_read_sync(/g" |
 
-tr '\r' '\n'
+sed "/\r/s/halt_sys: in x86emuOp_halt/}\r/g" |
 
-echo "}"
+sed "/\r/s/[^\r]*runInt[0-9,a-f]*();: starting execution of INT\([0-9,a-f]*\)[^\r]*/void replay_int\1(void)\r{/g" |
+
+
+tr '\r' '\n'
