@@ -43,10 +43,12 @@ echo "$header"
 egrep "c000:[0-9,a-f]{4}" $1 |
 grep -v "Running option rom at c000:0003" |
 sed "s/c000\:[0-9,a-f]\{4\}\ /\t/g" |
-sed "s/)/);/g" |
-sed "s/=\ 0x\([0-9,a-f]*\)/\/\*\ \1\ \*\//g" |
 
 tr '\n' '\r' |
+
+sed "/\r/s/\[[0-9,a-f]\{8\}\]//g" |
+sed "s/)/);/g" |
+sed "s/=\ 0x\([0-9,a-f]*\)/\/\*\ \1\ \*\//g" |
 
 sed "s/outl(0x0\{0,4\}\([0-9,a-f]*\), $iport);[^\r]*\r\toutl(0x\([0-9,a-f]*\), $dport);/radeon_write(0x\1, 0x\2);/g" |
 sed "s/outl(0x0\{0,4\}\([0-9,a-f]*\), $iport);[^\r]*\r\tinl($dport);/radeon_read(0x\1);/g" |
