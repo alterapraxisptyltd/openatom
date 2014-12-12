@@ -1,12 +1,14 @@
 iport=0x2000
 dport=0x2004
 stsport=0x204c
+timer=0x3f54
 
 hex=0-9,a-f
 
 header="
 #include <arch/io.h>
 #include <pc80/vga_io.h>
+#include <delay.h>
 
 static void sync_read(void)
 {
@@ -38,6 +40,12 @@ static void radeon_write_sync(uint32_t reg_addr, uint32_t value)
 	radeon_write(reg_addr, value);
 }
 
+static void radeon_delay(uint32_t internal_timer)
+{
+	/* Based on a 50MHz internal_timer. YMMV */
+	udelay(internal_timer / 50);
+}
+
 void run_replay(void)
 {"
 
@@ -67,6 +75,8 @@ sed "s/inb(0x03c3));/vga_enable_read();/g" |
 sed "s/outw(0x\([$hex]\{2\}\)\([$hex]\{2\}\), 0x03c4);/outw(0x\1\2, 0x03c4);\/\*\ vga_sr_write(0x\2, 0x\1); \*\//g" |
 sed "s/outb(0x\([$hex]*\), 0x03c4);[^\r]*\r\tinb(0x03c5);/vga_sr_read(0x\1);/g" |
 sed "s/outb(0x\([$hex]*\), 0x03ce);[^\r]*\r\toutb(0x\([$hex]*\), 0x03cf);/vga_gr_write(0x\1, 0x\2);/g" |
+
+sed "s/radeon_read($timer);[^$hex\r]*\([$hex]*\)[^\r]*\(\r\tinl($dport);[^$hex\r]*\([$hex]*\)[^\r]*\)*/radeon_delay(0x\3 - 0x\1);/g" |
 
 sed "/\r/s/halt_sys: in x86emuOp_halt/}\r/g" |
 sed "/\r/s/[^\r]*runInt[$hex]*();: starting execution of INT\([$hex]*\)[^\r]*/void replay_int\1(void)\r{/g" |
