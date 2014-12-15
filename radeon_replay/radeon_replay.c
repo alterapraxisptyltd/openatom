@@ -135,6 +135,8 @@ int main(int argc, char *argv[])
 		decode_edid(edid_raw, sizeof(edid_raw), &edid);
 	}
 
+	if (config.run_tests)
+		run_radeon_tests();
 
 	if (config.run_replay) {
 		printf("Replaying initial init\n");
