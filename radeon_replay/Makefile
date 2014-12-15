@@ -11,6 +11,8 @@ SRCS=radeon_replay.c \
 OBJS = $(sort ${SRCS:.c=.o})
 
 CFLAGS += -Wall
+REMOTE := mrnuke@192.168.1.141:/home/mrnuke
+SCP := scp
 
 TARGET=radeon_replay
 
@@ -22,3 +24,5 @@ $(TARGET): $(OBJS)
 clean:
 	-$(RM) $(OBJS) $(TARGET)
 
+install:
+	$(SCP) $(TARGET) $(REMOTE)
