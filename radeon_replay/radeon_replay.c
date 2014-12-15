@@ -4,6 +4,7 @@
 
 #include "edid.h"
 #include "radeon_init_native.h"
+#include "radeon_util.h"
 #include "replay.h"
 
 static void dump_array(const uint8_t *what, size_t len)
@@ -45,6 +46,8 @@ int main(void)
 	}
 
 	decode_edid(edid_raw, sizeof(edid_raw), &edid);
+
+	run_radeon_tests();
 
 	printf("Replaying initial init\n");
 	run_replay();
