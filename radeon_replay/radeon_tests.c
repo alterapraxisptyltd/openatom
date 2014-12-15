@@ -29,7 +29,7 @@ static uint8_t attempt_aux_read(uint16_t aux_req, uint16_t data_out,
 
 	// 0009: COMP   lpAuxRequest  <-  0000
 	// 000e: JUMP_Equal  01a7
-	if (auq_rex == 0)
+	if (aux_req == 0)
 		goto label_01a7;
 
 	// 0011: CLEAR  WS_REMIND/HI32 [XXXX]
