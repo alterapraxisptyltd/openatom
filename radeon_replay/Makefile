@@ -19,12 +19,17 @@ LIBS=$(sort ${MODULES:%=lib%.a})
 VPATH=$(MODULES)
 
 CFLAGS += -Wall -I$(shell pwd)
+REMOTE := mrnuke@192.168.1.141:/home/mrnuke
+SCP := scp
 
 $(TARGET): $(OBJS) $(LIBS)
 	$(CC) $(LIBS) $^ -o $@
 
 clean: clean-aruba
 	-$(RM) $(OBJS) $(TARGET)
+
+install:
+	$(SCP) $(TARGET) $(REMOTE)
 
 %/lib%.a:
 	$(MAKE) -C %
