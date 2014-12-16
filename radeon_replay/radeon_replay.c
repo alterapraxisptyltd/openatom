@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 
 	if (config.run_replay) {
 		printf("Replaying initial init\n");
-		run_replay();
+		run_replay(1);
 
 		printf("Replaying first int10 call\n");
 		replay_int10_c1();
