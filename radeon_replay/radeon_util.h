@@ -21,6 +21,14 @@ static void radeon_reg_write(uint32_t reg_addr, uint32_t value)
 	radeon_write_sync(reg_addr << 2, value);
 }
 
+static void radeon_reg_mask(uint32_t reg, uint32_t clrbits, uint32_t setbits)
+{
+	uint32_t reg32 = radeon_reg_read(reg);
+	reg32 &= ~clrbits;
+	reg32 |= setbits;
+	radeon_reg_write(reg, reg32);
+}
+
 void run_radeon_tests(void);
 
 #endif /* RADEON_UTIL */
