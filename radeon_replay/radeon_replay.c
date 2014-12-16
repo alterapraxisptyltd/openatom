@@ -7,6 +7,7 @@
 #include <sys/io.h>
 
 #include "edid.h"
+#include "replay.h"
 #include "radeon_init_native.h"
 #include "radeon_util.h"
 #include "replay.h"
@@ -137,6 +138,7 @@ int main(int argc, char *argv[])
 
 
 	if (config.run_replay) {
+		asic_init();
 		printf("Replaying initial init\n");
 		run_replay(1);
 
