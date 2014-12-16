@@ -50,7 +50,7 @@ int main(void)
 	run_radeon_tests();
 
 	printf("Replaying initial init\n");
-	run_replay();
+	run_replay(1);
 
 	printf("Replaying first int10 call\n");
 	replay_int10_c1();
