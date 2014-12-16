@@ -196,7 +196,7 @@ static void asic_registers_init(void)
 // 	008a: 2c250001          ADD    param[00]  [...X]  <-  01
 // 	008e: 3d250004          COMP   param[00]  [...X]  <-  04
 // 	0092: 458600            JUMP_Below  0086
-	radeon_delay(2);// 	0095: 5102              DELAY_MicroSec  02
+	radeon_udelay(2);// 	0095: 5102              DELAY_MicroSec  02
 // 	0097: 550000            CLEAR  param[00]  [XXXX]
 // 	009a: 524e              CALL_TABLE  4e  (ProcessAuxChannelTransaction)
 // 	009c: 661e              SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
