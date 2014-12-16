@@ -64,7 +64,7 @@ void radeon_write_sync(uint32_t reg_addr, uint32_t value)
 	radeon_write_op(reg_addr, value);
 }
 
-uint32_t radeon_delay(uint32_t internal_timer)
+void radeon_delay(uint32_t internal_timer)
 {
 	fprintf(stderr, "\t%s(0x%08x);\n", __func__, internal_timer);
 	sync_read_op();
