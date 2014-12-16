@@ -72,3 +72,8 @@ void radeon_delay(uint32_t internal_timer)
 	/* Based on a 50MHz internal_timer. YMMV */
 	udelay(internal_timer / 50);
 }
+
+void radeon_udelay(uint32_t usec)
+{
+	radeon_delay(usec * 50);
+}
