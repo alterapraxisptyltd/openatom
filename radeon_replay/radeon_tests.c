@@ -191,7 +191,7 @@ label_01e2:
 	// 01fc: CLEAR  reg[190b]  [.X..]
 	// 0200: OR     reg[190c]  [...X]  <-  01
 	// 0205: CLEAR  reg[190c]  [.X..]
-	udelay(0x32);// 0209: DELAY_MicroSec  32
+	radeon_udelay(0x32);// 0209: DELAY_MicroSec  32
 	return sts_dly; // 020b: EOT
 	// 020c: 7a180000000000140004002800080040000c005400100068001400
 	// CTB_DS  24 bytes
