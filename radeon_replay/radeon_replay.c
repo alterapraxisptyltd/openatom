@@ -3,6 +3,7 @@
 #include <sys/io.h>
 
 #include "edid.h"
+#include "replay.h"
 #include "radeon_init_native.h"
 #include "radeon_util.h"
 #include "replay.h"
@@ -48,6 +49,8 @@ int main(void)
 	decode_edid(edid_raw, sizeof(edid_raw), &edid);
 
 	run_radeon_tests();
+
+	asic_init();
 
 	printf("Replaying initial init\n");
 	run_replay(1);
