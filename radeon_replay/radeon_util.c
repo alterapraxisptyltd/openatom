@@ -1,46 +1,74 @@
+#include <stdio.h>
 #include <sys/io.h>
 #include <unistd.h>
 
 #include "radeon_util.h"
 
-void udelay(uint32_t usecs)
+static void udelay(uint32_t usecs)
 {
 	usleep(usecs);
 }
 
-void sync_read(void)
+static void sync_read_op(void)
 {
 	vga_enable_read();
 	inl(0x204c);
 }
 
-uint32_t radeon_read(uint32_t reg_addr)
+static uint32_t radeon_read_op(uint32_t reg_addr)
 {
 	outl(reg_addr, 0x2000);
 	return inl(0x2004);
 }
 
+static void radeon_write_op(uint32_t reg_addr, uint32_t value)
+{
+	outl(reg_addr, 0x2000);
+	outl(value, 0x2004);
+}
+
+void sync_read(void)
+{
+	fprintf(stderr, "\t%s();\n", __func__);
+	sync_read_op();
+}
+
+uint32_t radeon_read(uint32_t reg_addr)
+{
+	uint32_t reg32;
+	reg32 = radeon_read_op(reg_addr);(0x2004);
+	fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
+	return reg32;
+}
+
 void radeon_write(uint32_t reg_addr, uint32_t value)
 {
+	fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
 	outl(reg_addr, 0x2000);
 	outl(value, 0x2004);
 }
 
 uint32_t radeon_read_sync(uint32_t reg_addr)
 {
-	sync_read();
-	return radeon_read(reg_addr);
+	uint32_t reg32;
+	sync_read_op();
+	reg32 = radeon_read_op(reg_addr);(0x2004);
+	fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
+	return reg32;
 }
 
 void radeon_write_sync(uint32_t reg_addr, uint32_t value)
 {
-	sync_read();
-	radeon_write(reg_addr, value);
+	fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
+	sync_read_op();
+	radeon_write_op(reg_addr, value);
 }
 
 uint32_t radeon_delay(uint32_t internal_timer)
 {
-	radeon_write_sync(0x3f50, 0x0);
+	fprintf(stderr, "\t%s(0x%08x);\n", __func__, internal_timer);
+	sync_read_op();
+	radeon_write_op(0x3f50, 0x0);
 	/* Based on a 50MHz internal_timer. YMMV */
 	udelay(internal_timer / 50);
 }

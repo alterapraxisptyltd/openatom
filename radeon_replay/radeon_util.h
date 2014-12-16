@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-void udelay(uint32_t usecs);
 void sync_read(void);
 uint32_t radeon_read(uint32_t reg_addr);
 void radeon_write(uint32_t reg_addr, uint32_t value);
