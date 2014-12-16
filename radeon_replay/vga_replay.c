@@ -3,13 +3,15 @@
 #include "replay_util.h"
 #include "vga_io.h"
 
-void run_replay(void)
+void run_replay(uint8_t goto_skippie)
 {
 	radeon_read_sync(0x0000); /* 9ffffffc */
 	sync_read();
 	radeon_write_sync(0x1728, 0x0008c000);
 	radeon_read_sync(0x3f54); /* 00000000 */
 	radeon_write_sync(0x174c, 0x00000000);
+	if (goto_skippie)
+		goto skippie;
 	radeon_read_sync(0x0670); /* 00037e04 */
 	radeon_write_sync(0x0670, 0x00007e04);
 	radeon_read_sync(0x0670); /* 00007e04 */
@@ -73,6 +75,7 @@ void run_replay(void)
 	radeon_write_sync(0x6f14, 0x00000006);
 	radeon_read_sync(0x6e18); /* 00000003 */
 	radeon_write_sync(0x6e18, 0x00000004);
+skippie:
 	radeon_read_sync(0x6e70); /* 00400110 */
 	radeon_write_sync(0x6e70, 0x00400310);
 	radeon_read_sync(0x6e70); /* 00400310 */
