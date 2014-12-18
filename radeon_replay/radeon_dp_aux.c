@@ -190,6 +190,72 @@ static int radeon_dp_aux_native_read(uint8_t bus,
 	return ret;
 }
 
+
+static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, uint8_t delay)
+{
+	int ret;
+	uint8_t msg[5], ack;
+
+	msg[0] = (DP_AUX_I2C_WRITE | DP_AUX_I2C_MOT) << 4;
+	msg[1] = 0;
+	msg[2] = address;
+	msg[3] = 0;
+	msg[4] = reg;
+
+	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+					    NULL, 0, delay, &ack);
+
+	return ret;
+}
+
+static int radeon_dp_aux_i2c_stop(uint8_t bus, uint8_t address, uint8_t delay)
+{
+	int ret;
+	uint8_t msg[3], ack;
+
+	msg[0] = (DP_AUX_I2C_READ) << 4;
+	msg[1] = 0;
+	msg[2] = address;
+
+	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+					    NULL, 0, delay, &ack);
+
+	return ret;
+}
+
+static int radeon_dp_aux_i2c_read(uint8_t bus, uint16_t address, uint8_t reg,
+				  uint8_t *recv, int recv_bytes, uint8_t delay)
+{
+	int ret;
+	uint8_t msg[4], ack;
+
+	if (recv_bytes == 0)
+		return -EINVAL;
+
+	/* FIXME: We could break up the big transaction into smaller chunks */
+	if (recv_bytes > 16)
+		return -EINVAL;
+
+	msg[0] = (DP_AUX_I2C_READ | DP_AUX_I2C_MOT) << 4;
+	msg[1] = 0;
+	msg[2] = address;
+	msg[3] = recv_bytes - 1;
+
+	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+					    recv, recv_bytes, delay, &ack);
+
+	return ret;
+}
+
+uint8_t radeon_read_dpcd_reg(uint8_t bus, uint16_t reg)
+{
+	uint8_t val;
+
+	radeon_dp_aux_native_read(bus, reg, &val, 1, 0);
+
+	return val;
+}
+
 int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len)
 {
 	int ret;
@@ -202,4 +268,36 @@ int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len)
 			return -EAGAIN;
 	}
 	return 0;
+}
+
+int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
+		    uint8_t *dest, uint8_t start, uint16_t len)
+{
+	int ret;
+
+	for (; len != 0; len -= MIN(16, len), dest += 16, start += 16) {
+		ret = radeon_dp_aux_i2c_write(bus, addr, start, 0);
+		if (ret < 0) {
+			fprintf(stderr, "I²C: address write failed\n");
+			goto force_i2c_stop;
+		}
+
+		ret = radeon_dp_aux_i2c_read(bus, addr, start, dest, MIN(16, len), 0);
+		if ((ret < 0) || (ret != MIN(16, len))) {
+			fprintf(stderr, "I²C: Got less data than expected\n");
+			ret = -EAGAIN;
+			goto force_i2c_stop;
+		}
+
+		ret = radeon_dp_aux_i2c_stop(bus, addr, 0);
+		if (ret < 0) {
+			fprintf(stderr, "I²C: Could not stop transaction\n");
+			goto force_i2c_stop;
+		}
+	}
+	return 0;
+
+force_i2c_stop:
+	ret = radeon_dp_aux_i2c_stop(bus, addr, 0);
+	return ret;
 }
