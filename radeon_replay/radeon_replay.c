@@ -18,8 +18,8 @@ static void dump_array(const uint8_t *what, size_t len)
 
 int main(void)
 {
-	int ret;
-	uint8_t dpcd[256];
+	int dpcd_ret, edid_ret;
+	uint8_t dpcd[256], edid[256];
 	printf("radeon_replay AtomBIOS replayer\n");
 
 	if (ioperm(0x2000, 0x2000, 1) || ioperm(0x300, 0x100, 1)) {
@@ -28,13 +28,19 @@ int main(void)
 	}
 
 	printf("Let's try to read from the aux channel\n");
+	dpcd_ret = radeon_read_dpcd(0, dpcd, 0, sizeof(dpcd));
 
-	ret = radeon_read_dpcd(0, dpcd, 0, sizeof(dpcd));
-	if (ret < 0) {
-		printf("Something bad happened\n");
-		return 1;
+	printf("Now let's try to get an EDID\n");
+	edid_ret = radeon_read_dp_aux_i2c(0, 0x50, edid, 0, sizeof(edid));
+
+	if (dpcd_ret >= 0) {
+		printf("Here's the DPCD data:\n");
+		dump_array(dpcd, sizeof(dpcd));
 	}
-	dump_array(dpcd, sizeof(dpcd));
+	if (edid_ret >= 0) {
+		printf("And here's the EDID:\n");
+		dump_array(edid, sizeof(edid));
+	}
 
 	printf("Replaying initial init\n");
 	run_replay();
