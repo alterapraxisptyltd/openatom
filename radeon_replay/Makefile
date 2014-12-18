@@ -1,4 +1,5 @@
 SRCS=radeon_replay.c \
+	edid.c \
 	radeon_dp_aux.c \
 	radeon_util.c \
 	vga_io.c \
