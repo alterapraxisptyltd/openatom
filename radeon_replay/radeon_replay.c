@@ -1,7 +1,19 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/io.h>
 
 #include "replay.h"
+
+static void dump_array(const uint8_t *what, size_t len)
+{
+	size_t i;
+	for (i = 0; i < len; i++) {
+		if ((i & 0xf) == 0)
+			printf("\n %02x:", i);
+		printf(" %02x", what[i]);
+	}
+	printf("\n");
+}
 
 int main(void)
 {
