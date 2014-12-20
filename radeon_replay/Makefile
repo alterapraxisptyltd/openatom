@@ -4,10 +4,12 @@ all: $(TARGET)
 include aruba/Makefile.inc
 
 SRCS=radeon_replay.c \
+	atomfake_inseminator.c \
 	coreboot_glue.c \
 	drm_dp_helper.c \
 	edid.c \
 	linux_glue.c \
+	radeon_dp_encoder.c \
 	radeon_util.c \
 	radeon_tests.c \
 	radeon_util.c \

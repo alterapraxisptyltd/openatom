@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <sys/io.h>
 
+#include "atomfake.h"
 #include "edid.h"
 #include "replay.h"
 #include "radeon_init_native.h"
 #include "radeon_util.h"
-#include "replay.h"
 
 struct global_cfg {
 	bool need_io_perm;
