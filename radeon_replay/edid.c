@@ -1002,7 +1002,7 @@ int decode_edid(unsigned char *edid, int size, struct edid *out)
 		if (edid[0x11] > 0x0f) {
 			if (edid[0x10] == 0xff) {
 				c.has_valid_year = 1;
-				printf("Made week %hhd of model year %hhd\n", edid[0x10],
+				printf("Made week %hhud of model year %hhud\n", edid[0x10],
 				       edid[0x11]);
 				out->week = edid[0x10];
 				out->year = edid[0x11];
@@ -1010,7 +1010,7 @@ int decode_edid(unsigned char *edid, int size, struct edid *out)
 				/* we know it's at least 2013, when this code was written */
 				if (edid[0x11] + 90 <= 2013) {
 					c.has_valid_year = 1;
-					printf("Made week %hhd of %hhd\n",
+					printf("Made week %hhd of %hd\n",
 					       edid[0x10], edid[0x11] + 1990);
 					out->week = edid[0x10];
 					out->year = edid[0x11] + 1990;
