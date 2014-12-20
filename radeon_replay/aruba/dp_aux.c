@@ -49,6 +49,38 @@ static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint32_t block)
 	return (aruba_read(rdev, block + DP_AUX_FIFO) >> 8) & 0xff;
 }
 
+/*
+ * [PATCH 12/48] drm/radeon/kms: DP aux updates for DCE6
+ * From: Alex Deucher <alexander.deucher at amd.com>
+ *
+ * DCE6 requires a non-0 value for lpAuxRequest for the
+ * ProcessAuxChannelTransaction command table. Setting lpAuxRequest to 0 is a
+ * special case used by AsicInit for setting up the aux pads.
+ */
+void radeon_init_aux_pads(struct radeon_device* rdev)
+{
+	int i;
+	uint32_t block;
+
+	for (i = 0; i < 6; i++) {
+		block = get_aux_block(i);
+		aruba_write(rdev, block + 0x20, 0x00320000);
+		aruba_write(rdev, block + 0x24, 0x00001c00);
+		aruba_write(rdev, block + 0x28, 0x123d1210);
+	}
+
+	for (i = 0x10; i > 0 ; i--) {
+		aruba_mask(rdev, 0x65fc, 0, 0x40 << 8);
+		aruba_mask(rdev, 0x65fc, BIT(14), 0);
+	}
+	aruba_mask(rdev, 0x642c, 0, 0x01);
+	aruba_mask(rdev, 0x642c, 0xff << 16, 0);
+	aruba_mask(rdev, 0x6430, 0, 0x01);
+	aruba_mask(rdev, 0x6430, 0xff << 16, 0);
+	udelay(50);
+
+	return;
+}
 
 static ssize_t do_aux_tran(struct radeon_device *rdev,
 		       uint8_t channel_id, uint8_t hpd_id,
