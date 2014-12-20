@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <sys/io.h>
 
+#include "atomfake.h"
 #include "edid.h"
 #include "replay.h"
 #include "radeon_init_native.h"
 #include "radeon_util.h"
-#include "replay.h"
 
 static void dump_array(const uint8_t *what, size_t len)
 {
@@ -30,6 +30,11 @@ int main(void)
 		printf("No IO permissions. Are we root?\n");
 		return 1;
 	}
+#if 0
+	run_radeon_tests();
+
+	printf("Trying to write a fake atombios table\n");
+	atomfake_insert_table();
 
 	printf("Let's try to read from the aux channel\n");
 	dpcd_ret = radeon_read_dpcd(0, dpcd, 0, sizeof(dpcd));
@@ -47,7 +52,7 @@ int main(void)
 	}
 
 	decode_edid(edid_raw, sizeof(edid_raw), &edid);
-
+#endif
 	run_radeon_tests();
 
 	asic_init();
