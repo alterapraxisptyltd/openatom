@@ -3,6 +3,25 @@
 #include <unistd.h>
 
 #include "radeon_util.h"
+#include "vga_io.h"
+
+uint32_t radeon_reg_read(uint32_t reg_addr)
+{
+	return radeon_read_sync(reg_addr << 2);
+}
+
+void radeon_reg_write(uint32_t reg_addr, uint32_t value)
+{
+	radeon_write_sync(reg_addr << 2, value);
+}
+
+void radeon_reg_mask(uint32_t reg, uint32_t clrbits, uint32_t setbits)
+{
+	uint32_t reg32 = radeon_reg_read(reg);
+	reg32 &= ~clrbits;
+	reg32 |= setbits;
+	radeon_reg_write(reg, reg32);
+}
 
 static void udelay(uint32_t usecs)
 {
@@ -36,7 +55,7 @@ void sync_read(void)
 uint32_t radeon_read(uint32_t reg_addr)
 {
 	uint32_t reg32;
-	reg32 = radeon_read_op(reg_addr);(0x2004);
+	reg32 = radeon_read_op(reg_addr);
 	fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
 	return reg32;
 }
@@ -52,7 +71,7 @@ uint32_t radeon_read_sync(uint32_t reg_addr)
 {
 	uint32_t reg32;
 	sync_read_op();
-	reg32 = radeon_read_op(reg_addr);(0x2004);
+	reg32 = radeon_read_op(reg_addr);
 	fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
 	return reg32;
 }

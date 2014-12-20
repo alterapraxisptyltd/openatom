@@ -7,6 +7,8 @@ SRCS=radeon_replay.c \
 
 OBJS = $(sort ${SRCS:.c=.o})
 
+CFLAGS += -Wall
+
 TARGET=radeon_replay
 
 all: $(TARGET)

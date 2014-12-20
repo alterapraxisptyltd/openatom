@@ -11,7 +11,7 @@ static void dump_array(const uint8_t *what, size_t len)
 	size_t i;
 	for (i = 0; i < len; i++) {
 		if ((i & 0xf) == 0)
-			printf("\n %02x:", i);
+			printf("\n %02zx:", i);
 		printf(" %02x", what[i]);
 	}
 	printf("\n");
@@ -26,7 +26,7 @@ int main(void)
 
 	if (ioperm(0x2000, 0x2000, 1) || ioperm(0x300, 0x100, 1)) {
 		printf("No IO permissions. Are we root?\n");
-		return;
+		return 1;
 	}
 
 	printf("Let's try to read from the aux channel\n");
@@ -59,4 +59,6 @@ int main(void)
 	replay_int10_c3();
 
 	printf("Did it work ?\n");
+
+	return 0;
 }
