@@ -27,6 +27,7 @@
 #define DP_AUX_I2C_REPLY_NAK			(1 << 6)
 #define DP_AUX_I2C_REPLY_DEFER			(2 << 6)
 
+static const uint16_t padoff[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
 
 static void aux_channel_fifo_write_start(uint8_t channel, uint8_t data)
 {
@@ -49,6 +50,57 @@ static uint8_t aux_channel_fifo_read(uint8_t channel)
 	return (radeon_reg_read(reg) >> 8) & 0xff;
 }
 
+/*
+ * [PATCH 12/48] drm/radeon/kms: DP aux updates for DCE6
+ * From: Alex Deucher <alexander.deucher at amd.com>
+ *
+ * DCE6 requires a non-0 value for lpAuxRequest for the
+ * ProcessAuxChannelTransaction command table. Setting lpAuxRequest to 0 is a
+ * special case used by AsicInit for setting up the aux pads.
+ */
+uint8_t radeon_init_aux_pads(void)
+{
+	int i;
+	//   01a7: SET_DATA_BLOCK  ff  (this table)
+	//   01a9: ADD    WS_DATAPTR [..XX]  <-  020f
+	////dataptr = data;
+	for (i = 0; i < 6; i++) {
+		//   01ae: MOVE   WS_REGPTR [..XX]  <-  data[0000] [..XX]
+		//   01b3: MOVE   reg[1888]  [XXXX]  <-  00320000
+		radeon_reg_write(0x1888 + padoff[i], 0x00320000);
+		//   01bb: MOVE   reg[1889]  [XXXX]  <-  00001c00
+		radeon_reg_write(0x1889 + padoff[i], 0x00001c00);
+		//   01c3: MOVE   reg[188a]  [XXXX]  <-  123d1210
+		radeon_reg_write(0x188a + padoff[i], 0x123d1210);
+		//   01cb: ADD    WS_DATAPTR [..XX]  <-  0004
+		//   01d0: ADD    lpAuxRequest_low  <-  01
+		//   01d4: COMP   lpAuxRequest_low  <-  06
+		//   01d8: JUMP_NotEqual  01ae
+	}
+	//   01db: CLEAR  WS_REGPTR [..XX]
+	//   01de: MOVE   WS_REMIND/HI32 [...X]  <-  10
+	for (i = 0x10; i--; i != 0) {
+		//   01e2: OR     reg[197f]  [..X.]  <-  40
+		radeon_reg_mask(0x197f, 0, 0x40 << 8);
+		//   01e7: AND    reg[197f]  [..X.]  <-  bf
+		radeon_reg_mask(0x197f, ~0xffffbfff, 0);
+		//   01ec: SUB    WS_REMIND/HI32 [...X]  <-  01
+		//   01f0: COMP   WS_REMIND/HI32 [...X]  <-  00
+		//   01f4: JUMP_NotEqual  01e2
+	}
+	//   01f7: OR     reg[190b]  [...X]  <-  01
+	radeon_reg_mask(0x190b, 0, 0x01);
+	//   01fc: CLEAR  reg[190b]  [.X..]
+	radeon_reg_mask(0x190b, 0xff << 16, 0);
+	//   0200: OR     reg[190c]  [...X]  <-  01
+	radeon_reg_mask(0x190c, 0, 0x01);
+	//   0205: CLEAR  reg[190c]  [.X..]
+	radeon_reg_mask(0x190b, 0xff << 16, 0);
+	//   0209: DELAY_MicroSec  32
+	radeon_udelay(0x32);
+	//   020b: EOT
+	return 0;
+}
 static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 		       const uint8_t *msg, uint8_t send_bytes,
 		       uint8_t *recv, uint8_t recv_size, uint8_t *num_received)
@@ -96,6 +148,7 @@ static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 
 	reply = aux_channel_fifo_read(channel_id);
 	num_bytes_received = (radeon_reg_read(REG_DP_AUX_STATUS + regptr) >> 24) & 0x1f;
+	fprintf(stderr, "Gotz beck leik %u baitz %x\n", num_bytes_received, reply);
 
 	if (num_bytes_received == 0)
 		return -EIO;

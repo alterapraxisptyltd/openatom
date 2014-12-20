@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 void asic_init(void);
+uint8_t radeon_init_aux_pads(void);
 
 int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len);
 int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
