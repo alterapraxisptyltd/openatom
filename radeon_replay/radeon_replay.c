@@ -26,7 +26,7 @@ int main(void)
 
 	if (ioperm(0x2000, 0x2000, 1) || ioperm(0x300, 0x100, 1)) {
 		printf("No IO permissions. Are we root?\n");
-		return;
+		return 1;
 	}
 
 	printf("Let's try to read from the aux channel\n");
@@ -59,4 +59,6 @@ int main(void)
 	replay_int10_c3();
 
 	printf("Did it work ?\n");
+
+	return 0;
 }
