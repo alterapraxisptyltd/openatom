@@ -8,7 +8,7 @@ SRCS=radeon_replay.c \
 	radeon_util.c \
 	refined_replay.c \
 	vga_io.c \
-	vga_replay.c
+	vga_simply_fy.c
 
 OBJS = $(sort ${SRCS:.c=.o})
 
