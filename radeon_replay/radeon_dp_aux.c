@@ -6,10 +6,11 @@
 #include <unistd.h>
 
 /* NOTE: These names are based on what _we_think_ these registers do */
-#define REG_DP_AUX_CTL			0x1880
-#define REG_DP_AUX_FIFO_CTL		0x1881
-#define REG_DP_AUX_STATUS		0x1884
-#define REG_DP_AUX_FIFO			0x1886
+#define REG_DP_AUX_CTL			(0x1880 << 2)
+#define REG_DP_AUX_FIFO_CTL		(0x1881 << 2)
+#define REG_DP_AUX_CTL2			(0x1883 << 2)
+#define REG_DP_AUX_STATUS		(0x1884 << 2)
+#define REG_DP_AUX_FIFO			(0x1886 << 2)
 
 #define DP_AUX_I2C_WRITE		0x0
 #define DP_AUX_I2C_READ			0x1
@@ -28,29 +29,84 @@
 #define DP_AUX_I2C_REPLY_DEFER		(0x2 << 2)
 #define DP_AUX_I2C_REPLY_MASK		(0x3 << 2)
 
+struct drm_device {
+	void *dev_private;
+};
 
-static void aux_channel_fifo_write_start(uint8_t channel, uint8_t data)
+struct radeon_i2c_bus_rec {
+	uint8_t i2c_id;
+	uint8_t hpd;
+};
+struct radeon_i2c_chan {
+	struct drm_device *dev;
+	struct radeon_i2c_bus_rec rec;
+};
+
+struct radeon_device {
+	int dummy;
+};
+
+static struct radeon_device my_rdev = {
+	.dummy = 0,
+};
+
+static struct drm_device my_drm = {
+	.dev_private = &my_rdev,
+};
+
+static struct radeon_i2c_chan my_i2c = {
+	.dev = &my_drm,
+	.rec = {
+		.i2c_id = 0,
+		.hpd = 0,
+	},
+};
+
+static const uint16_t padoff[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
+
+static void aruba_write(struct radeon_device *rdev, uint32_t reg, uint32_t value)
 {
-	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (channel * 4);
-	radeon_reg_write(reg, data << 8 | (1 << 31));
+	radeon_reg_write(reg >> 2, value);
 }
 
-static void aux_channel_fifo_write(uint8_t channel, uint8_t data)
+static uint32_t aruba_read(struct radeon_device *rdev, uint32_t reg)
 {
-	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (channel * 4);
-	radeon_reg_write(reg, data << 8);
+	return radeon_reg_read(reg >> 2);
 }
 
-static uint8_t aux_channel_fifo_read(uint8_t channel)
+
+static void aruba_mask(struct radeon_device *rdev, uint32_t reg, uint32_t clrbits, uint32_t setbits)
 {
-	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (channel * 4);
-	return (radeon_reg_read(reg) >> 8) & 0xff;
+	uint32_t reg32 = aruba_read(rdev, reg);
+	reg32 &= ~clrbits;
+	reg32 |= setbits;
+	aruba_write(rdev, reg, reg32);
 }
 
-static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
+static void aux_channel_fifo_write_start(struct radeon_device *rdev, uint8_t channel, uint8_t data)
+{
+	uint32_t reg;
+	reg = REG_DP_AUX_FIFO + (channel * 4 << 2);
+	aruba_write(rdev, reg, data << 8 | (1 << 31));
+}
+
+static void aux_channel_fifo_write(struct radeon_device *rdev, uint8_t channel, uint8_t data)
+{
+	uint32_t reg;
+	reg = REG_DP_AUX_FIFO + (channel * 4<< 2);
+	aruba_write(rdev, reg, data << 8);
+}
+
+static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint8_t channel)
+{
+	uint32_t reg;
+	reg = REG_DP_AUX_FIFO + (channel * 4 << 2);
+	return (aruba_read(rdev, reg) >> 8) & 0xff;
+}
+
+
+static int do_aux_tran(struct radeon_device *rdev,
+		       uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 		       const uint8_t *msg, uint8_t send_bytes,
 		       uint8_t *recv, uint8_t recv_size, uint8_t *num_received)
 {
@@ -60,29 +116,29 @@ static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 
 	*num_received = 0;
 
-	regptr = channel_id * 0x04;
-	radeon_reg_mask(0x194c + regptr, 0, 0x01 << 16);
-	radeon_reg_mask(0x194c + regptr, 0xffff, 0);
+	regptr = channel_id * 0x04 << 2;
+	aruba_mask(rdev, 0x194c + regptr, 0, 0x01 << 16);
+	aruba_mask(rdev, 0x194c + regptr, 0xffff, 0);
 
-	regptr = channel_id * 0x14;
+	regptr = channel_id * 0x14 << 2;
 
-	radeon_reg_mask(REG_DP_AUX_CTL + regptr, 0x7 << 28, (hpd_id & 0x7) << 28);
-	radeon_reg_mask(REG_DP_AUX_CTL + regptr, 0, 0x0101);
+	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 28, (hpd_id & 0x7) << 28);
+	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0, 0x0101);
 
 	/* Tell controller how many bytes we want to send */
-	radeon_reg_mask(REG_DP_AUX_FIFO_CTL + regptr, 0xff << 16, send_bytes << 16);
-	radeon_reg_mask(REG_DP_AUX_FIFO_CTL + regptr, 0xff, (delay << 4) & 0xff);
+	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff << 16, send_bytes << 16);
+	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff, (delay << 4) & 0xff);
 
 	/* Caller should make sure message is 16 bytes or less */
-	aux_channel_fifo_write_start(channel_id, *msg++);
+	aux_channel_fifo_write_start(rdev, channel_id, *msg++);
 	while (--send_bytes)
-		aux_channel_fifo_write(channel_id, *msg++);
+		aux_channel_fifo_write(rdev, channel_id, *msg++);
 
-	radeon_reg_mask(0x1883 + regptr, 0, 0x02);
-	radeon_reg_mask(REG_DP_AUX_FIFO_CTL + regptr, 0, 0x01);
+	aruba_mask(rdev, REG_DP_AUX_CTL2 + regptr, 0, 0x02);
+	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0, 0x01);
 
 	wait = (delay * 10 + 0x32);
-	while ((radeon_reg_read(REG_DP_AUX_STATUS + regptr) & 0xff) != 0x01) {
+	while ((aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & 0xff) != 0x01) {
 		radeon_udelay(10);
 		if (--wait != 0)
 			continue;
@@ -90,13 +146,13 @@ static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 		return -ETIMEDOUT;
 	}
 
-	if (radeon_reg_read(REG_DP_AUX_STATUS + regptr) == 0x00ff8ff0)
+	if (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) == 0x00ff8ff0)
 		return -EBUSY;
 
-	radeon_reg_write(REG_DP_AUX_FIFO + regptr, 0x80000001);
+	aruba_write(rdev, REG_DP_AUX_FIFO + regptr, 0x80000001);
 
-	reply = aux_channel_fifo_read(channel_id);
-	num_bytes_received = (radeon_reg_read(REG_DP_AUX_STATUS + regptr) >> 24) & 0x1f;
+	reply = aux_channel_fifo_read(rdev, channel_id);
+	num_bytes_received = (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) >> 24) & 0x1f;
 
 	if (num_bytes_received == 0)
 		return -EIO;
@@ -106,30 +162,36 @@ static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 		return reply;
 
 	for (i = 0; i < MIN(num_bytes_received, recv_size); i++)
-		recv[i] = aux_channel_fifo_read(channel_id);
+		recv[i] = aux_channel_fifo_read(rdev, channel_id);
 
 	/* This extra data is lost forever. TODO: Signal an error? */
 	for (; i < num_bytes_received; i++)
-		aux_channel_fifo_read(channel_id);
+		aux_channel_fifo_read(rdev, channel_id);
 
 	*num_received = num_bytes_received;
 	return reply;
 }
 
-static int radeon_process_aux_ch_wrapper(uint8_t chan,
+static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 					 uint8_t *send, int send_bytes,
 					 uint8_t *recv, int recv_size,
 					 uint8_t delay, uint8_t *reply)
 {
+	struct drm_device *dev = chan->dev;
+	struct radeon_device *rdev = dev->dev_private;
+
 	int ret, retry;
-	uint8_t recv_bytes = 0, hpd_id = 2;
+	uint8_t recv_bytes = 0, hpd_id, ch_id;
+
+	hpd_id = chan->rec.hpd;
+	ch_id = chan->rec.i2c_id;
 
 	/* Default the reply field to something absurd */
 	*reply = 0xff;
 
 	/* Retry six times. That keeps us busy for 3ms or less */
 	for (retry = 0; retry < 6; retry++) {
-		ret = do_aux_tran(chan, delay / 10, hpd_id, send, send_bytes,
+		ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
 				  recv, recv_size, &recv_bytes);
 		*reply = (ret & 0xff) >> 4;
 
@@ -187,7 +249,7 @@ static int radeon_dp_aux_native_read(uint8_t bus,
 	msg[2] = address;
 	msg[3] = recv_bytes - 1;
 
-	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
 					    recv, recv_bytes, delay, &reply);
 
 	return ret;
@@ -205,7 +267,7 @@ static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, ui
 	msg[3] = 0;
 	msg[4] = reg;
 
-	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
 					    NULL, 0, delay, &reply);
 
 	return ret;
@@ -220,7 +282,7 @@ static int radeon_dp_aux_i2c_stop(uint8_t bus, uint8_t address, uint8_t delay)
 	msg[1] = 0;
 	msg[2] = address;
 
-	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
 					    NULL, 0, delay, &reply);
 
 	return ret;
@@ -244,7 +306,7 @@ static int radeon_dp_aux_i2c_read(uint8_t bus, uint16_t address, uint8_t reg,
 	msg[2] = address;
 	msg[3] = recv_bytes - 1;
 
-	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
 					    recv, recv_bytes, delay, &reply);
 
 	return ret;
