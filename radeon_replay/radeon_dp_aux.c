@@ -172,33 +172,35 @@ static int do_aux_tran(uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 static int radeon_process_aux_ch_wrapper(uint8_t chan,
 					 uint8_t *send, int send_bytes,
 					 uint8_t *recv, int recv_size,
-					 uint8_t delay, uint8_t *ack)
+					 uint8_t delay, uint8_t *reply)
 {
 	int ret, retry;
-	uint8_t recv_bytes = 0, hpd_id = 2, reply;
+	uint8_t recv_bytes = 0, hpd_id = 2;
+
+	/* Default the reply field to something absurd */
+	*reply = 0xff;
 
 	/* Retry six times. That keeps us busy for 3ms or less */
 	for (retry = 0; retry < 6; retry++) {
 		ret = do_aux_tran(chan, delay / 10, hpd_id, send, send_bytes,
 				  recv, recv_size, &recv_bytes);
-		*ack = (ret & 0xff) >> 4;
-
-		reply = *ack & DP_AUX_NATIVE_REPLY_MASK;
+		*reply = (ret & 0xff) >> 4;
 
 		if (ret == -EBUSY)
 			continue;
 		else if (ret < 0)
 			break;
 
-		if (reply == DP_AUX_NATIVE_REPLY_ACK)
+		switch (*reply & DP_AUX_NATIVE_REPLY_MASK) {
+		case DP_AUX_NATIVE_REPLY_ACK:
 			return recv_bytes;
-		else if (reply == DP_AUX_NATIVE_REPLY_DEFER) {
+		case DP_AUX_NATIVE_REPLY_DEFER:
 			fprintf(stderr, "defer\n");
 			usleep(400);
 			continue;
-		}
-		else
+		default:
 			return -EIO;
+		}
 	}
 
 	if (ret == -EIO) {
@@ -222,7 +224,7 @@ static int radeon_process_aux_ch_wrapper(uint8_t chan,
 static int radeon_dp_aux_native_read(uint8_t bus,
 				     uint16_t address, uint8_t *recv, int recv_bytes, uint8_t delay)
 {
-	uint8_t msg[4], ack;
+	uint8_t msg[4], reply;
 	int ret;
 
 	if (recv_bytes == 0)
@@ -239,7 +241,7 @@ static int radeon_dp_aux_native_read(uint8_t bus,
 	msg[3] = recv_bytes - 1;
 
 	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
-					    recv, recv_bytes, delay, &ack);
+					    recv, recv_bytes, delay, &reply);
 
 	return ret;
 }
@@ -248,7 +250,7 @@ static int radeon_dp_aux_native_read(uint8_t bus,
 static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, uint8_t delay)
 {
 	int ret;
-	uint8_t msg[5], ack;
+	uint8_t msg[5], reply;
 
 	msg[0] = (DP_AUX_I2C_WRITE | DP_AUX_I2C_MOT) << 4;
 	msg[1] = 0;
@@ -257,7 +259,7 @@ static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, ui
 	msg[4] = reg;
 
 	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
-					    NULL, 0, delay, &ack);
+					    NULL, 0, delay, &reply);
 
 	return ret;
 }
@@ -265,14 +267,14 @@ static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, ui
 static int radeon_dp_aux_i2c_stop(uint8_t bus, uint8_t address, uint8_t delay)
 {
 	int ret;
-	uint8_t msg[3], ack;
+	uint8_t msg[3], reply;
 
 	msg[0] = (DP_AUX_I2C_READ) << 4;
 	msg[1] = 0;
 	msg[2] = address;
 
 	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
-					    NULL, 0, delay, &ack);
+					    NULL, 0, delay, &reply);
 
 	return ret;
 }
@@ -281,7 +283,7 @@ static int radeon_dp_aux_i2c_read(uint8_t bus, uint16_t address, uint8_t reg,
 				  uint8_t *recv, int recv_bytes, uint8_t delay)
 {
 	int ret;
-	uint8_t msg[4], ack;
+	uint8_t msg[4], reply;
 
 	if (recv_bytes == 0)
 		return -EINVAL;
@@ -296,7 +298,7 @@ static int radeon_dp_aux_i2c_read(uint8_t bus, uint16_t address, uint8_t reg,
 	msg[3] = recv_bytes - 1;
 
 	ret = radeon_process_aux_ch_wrapper(bus, msg, sizeof(msg),
-					    recv, recv_bytes, delay, &ack);
+					    recv, recv_bytes, delay, &reply);
 
 	return ret;
 }
