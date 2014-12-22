@@ -18,14 +18,15 @@
 #define DP_AUX_NATIVE_WRITE		0x8
 #define DP_AUX_NATIVE_READ		0x9
 
-#define DP_AUX_NATIVE_REPLY_MASK		(3 << 4)
-#define DP_AUX_NATIVE_REPLY_ACK			(0 << 4)
-#define DP_AUX_NATIVE_REPLY_NAK			(1 << 4)
-#define DP_AUX_NATIVE_REPLY_DEFER		(2 << 4)
-#define DP_AUX_I2C_REPLY_MASK			(3 << 4)
-#define DP_AUX_I2C_REPLY_ACK			(0 << 6)
-#define DP_AUX_I2C_REPLY_NAK			(1 << 6)
-#define DP_AUX_I2C_REPLY_DEFER			(2 << 6)
+#define DP_AUX_NATIVE_REPLY_ACK		(0x0 << 0)
+#define DP_AUX_NATIVE_REPLY_NACK	(0x1 << 0)
+#define DP_AUX_NATIVE_REPLY_DEFER	(0x2 << 0)
+#define DP_AUX_NATIVE_REPLY_MASK	(0x3 << 0)
+
+#define DP_AUX_I2C_REPLY_ACK		(0x0 << 2)
+#define DP_AUX_I2C_REPLY_NACK		(0x1 << 2)
+#define DP_AUX_I2C_REPLY_DEFER		(0x2 << 2)
+#define DP_AUX_I2C_REPLY_MASK		(0x3 << 2)
 
 static const uint16_t padoff[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
 
@@ -180,7 +181,7 @@ static int radeon_process_aux_ch_wrapper(uint8_t chan,
 	for (retry = 0; retry < 6; retry++) {
 		ret = do_aux_tran(chan, delay / 10, hpd_id, send, send_bytes,
 				  recv, recv_size, &recv_bytes);
-		*ack = ret & 0xff;
+		*ack = (ret & 0xff) >> 4;
 
 		reply = *ack & DP_AUX_NATIVE_REPLY_MASK;
 
