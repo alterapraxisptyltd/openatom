@@ -138,7 +138,7 @@ uint8_t radeon_init_aux_pads(void)
 	}
 	//   01db: CLEAR  WS_REGPTR [..XX]
 	//   01de: MOVE   WS_REMIND/HI32 [...X]  <-  10
-	for (i = 0x10; i--; i != 0) {
+	for (i = 0x10; i > 0 ; i--) {
 		//   01e2: OR     reg[197f]  [..X.]  <-  40
 		radeon_reg_mask(0x197f, 0, 0x40 << 8);
 		//   01e7: AND    reg[197f]  [..X.]  <-  bf
