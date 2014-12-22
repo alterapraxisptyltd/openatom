@@ -29,6 +29,11 @@
 #define DP_AUX_I2C_REPLY_DEFER		(0x2 << 2)
 #define DP_AUX_I2C_REPLY_MASK		(0x3 << 2)
 
+#define DRM_DEBUG_KMS(fmt, args...)				\
+	do {							\
+		fprintf(stderr, fmt, ##args);		\
+	} while (0)
+
 struct drm_device {
 	void *dev_private;
 };
@@ -204,7 +209,7 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 		case DP_AUX_NATIVE_REPLY_ACK:
 			return recv_bytes;
 		case DP_AUX_NATIVE_REPLY_DEFER:
-			fprintf(stderr, "defer\n");
+			DRM_DEBUG_KMS("DP sink replied with AUX_DEFER\n");
 			usleep(400);
 			continue;
 		default:
@@ -213,17 +218,17 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	}
 
 	if (ret == -EIO) {
-		fprintf(stderr, "AUX channel error\n");
+		DRM_DEBUG_KMS("AUX channel error\n");
 		return -EIO;
 	}
 
 	if (ret == -ETIMEDOUT) {
-		fprintf(stderr, "AUX channel timeout\n");
+		DRM_DEBUG_KMS("AUX channel timeout\n");
 		return -ETIMEDOUT;
 	}
 
 	if (ret == -EBUSY) {
-		fprintf(stderr, "AUX channel busy\n");
+		DRM_DEBUG_KMS("AUX channel busy\n");
 		return -EBUSY;
 	}
 
@@ -343,20 +348,20 @@ int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
 	for (; len != 0; len -= MIN(16, len), dest += 16, start += 16) {
 		ret = radeon_dp_aux_i2c_write(bus, addr, start, 0);
 		if (ret < 0) {
-			fprintf(stderr, "I²C: address write failed\n");
+			DRM_DEBUG_KMS("I²C: address write failed\n");
 			goto force_i2c_stop;
 		}
 
 		ret = radeon_dp_aux_i2c_read(bus, addr, start, dest, MIN(16, len), 0);
 		if ((ret < 0) || (ret != MIN(16, len))) {
-			fprintf(stderr, "I²C: Got less data than expected\n");
+			DRM_DEBUG_KMS("I²C: Got less data than expected\n");
 			ret = -EAGAIN;
 			goto force_i2c_stop;
 		}
 
 		ret = radeon_dp_aux_i2c_stop(bus, addr, 0);
 		if (ret < 0) {
-			fprintf(stderr, "I²C: Could not stop transaction\n");
+			DRM_DEBUG_KMS("I²C: Could not stop transaction\n");
 			goto force_i2c_stop;
 		}
 	}
