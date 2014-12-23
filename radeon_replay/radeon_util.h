@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#define max(a,b) ((a) > (b) ? (a) : (b))
 
 void sync_read(void);
 uint32_t radeon_read(uint32_t reg_addr);
