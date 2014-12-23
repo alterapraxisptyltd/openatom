@@ -166,7 +166,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 	if (--num_bytes_received == 0)
 		return reply;
 
-	for (i = 0; i < MIN(num_bytes_received, recv_size); i++)
+	for (i = 0; i < min(num_bytes_received, recv_size); i++)
 		recv[i] = aux_channel_fifo_read(rdev, channel_id);
 
 	/* This extra data is lost forever. TODO: Signal an error? */
@@ -330,11 +330,11 @@ int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len)
 {
 	int ret;
 
-	for (; len != 0; len -= MIN(16, len), dest += 16, start += 16) {
-		ret = radeon_dp_aux_native_read(bus, start, dest, MIN(16, len), 0);
+	for (; len != 0; len -= min(16, len), dest += 16, start += 16) {
+		ret = radeon_dp_aux_native_read(bus, start, dest, min(16, len), 0);
 		if (ret < 0)
 			return ret;
-		if (ret != MIN(16, len))
+		if (ret != min(16, len))
 			return -EAGAIN;
 	}
 	return 0;
@@ -345,15 +345,15 @@ int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
 {
 	int ret;
 
-	for (; len != 0; len -= MIN(16, len), dest += 16, start += 16) {
+	for (; len != 0; len -= min(16, len), dest += 16, start += 16) {
 		ret = radeon_dp_aux_i2c_write(bus, addr, start, 0);
 		if (ret < 0) {
 			DRM_DEBUG_KMS("I²C: address write failed\n");
 			goto force_i2c_stop;
 		}
 
-		ret = radeon_dp_aux_i2c_read(bus, addr, start, dest, MIN(16, len), 0);
-		if ((ret < 0) || (ret != MIN(16, len))) {
+		ret = radeon_dp_aux_i2c_read(bus, addr, start, dest, min(16, len), 0);
+		if ((ret < 0) || (ret != min(16, len))) {
 			DRM_DEBUG_KMS("I²C: Got less data than expected\n");
 			ret = -EAGAIN;
 			goto force_i2c_stop;
