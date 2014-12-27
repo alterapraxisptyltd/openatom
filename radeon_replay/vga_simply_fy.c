@@ -297,9 +297,9 @@ void run_replay(uint8_t goto_skippie)
 	radeon_read_sync(0x0600); /* 0000002b */
 	radeon_write_sync(0x0600, 0x00000044);
 	radeon_read_sync(0x0604); /* 00000009 */
- skippie:
 	radeon_read_sync(0x1724); /* 00000000 */
 	radeon_write_sync(0x1724, 0x00040000);
+ skippie:
 	radeon_read_sync(0x5428); /* 00000200 */
 	radeon_read_sync(0x1734); /* 00000000 */
 	radeon_read_sync(0x1738); /* 00000000 */
