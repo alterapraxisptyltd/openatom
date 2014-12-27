@@ -32,9 +32,11 @@ int main(void)
 	}
 #if 0
 	run_radeon_tests();
+#endif
 
 	printf("Trying to write a fake atombios table\n");
 	atomfake_insert_table();
+#if 0
 
 	printf("Let's try to read from the aux channel\n");
 	dpcd_ret = radeon_read_dpcd(0, dpcd, 0, sizeof(dpcd));
