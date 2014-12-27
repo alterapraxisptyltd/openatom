@@ -116,20 +116,20 @@ generate_fake_intel_oprom(const struct i915_gpu_controller_info *conf,
 void atomfake_insert_table(void)
 {
 	void *base;
-	int subsystem_vendor, subsystem_device; // XXX set these to your card..
+	int subsystem_vendor = 0x1002, subsystem_device = 0x990b; // XXX set these to your card..
 
 	base = get_atom_base();
 
 	ATOM_ROM_HEADER *rom_header = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER;
 	memset (rom_header, 0, sizeof (*rom_header)); // zero out structure
 
-	ATOM_COMMON_TABLE_HEADER *sheader = rom_header; // sHeader is the first member of rom_header struct which is aligned
+	ATOM_COMMON_TABLE_HEADER *sheader = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER; // sHeader is the first member of rom_header struct which is aligned
 	memset (sheader, 0, sizeof (*sheader)); // zero out structure
 	/* Fill in ATOM_COMMON_TABLE_HEADER */
 	sheader->usStructureSize = sizeof(ATOM_ROM_HEADER);
 
 	/* Fill in ATOM_ROM_HEADER structure */
-	memcpy (rom_header->sHeader, sheader, sizeof(ATOM_COMMON_TABLE_HEADER));
+	memcpy (&(rom_header->sHeader), sheader, sizeof(ATOM_COMMON_TABLE_HEADER));
 	memcpy (rom_header->uaFirmWareSignature, "ATOM", 4);
 	rom_header->usIoBaseAddress = (unsigned short) base;
 	rom_header->usSubsystemVendorID = subsystem_vendor;

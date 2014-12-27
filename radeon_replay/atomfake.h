@@ -16,6 +16,7 @@
 
 // hack this in..
 typedef unsigned short USHORT;
+typedef unsigned char UCHAR;
 
 /* Common header for all ROM Data tables.
   Every table pointed  _ATOM_MASTER_DATA_TABLE has this common header.
