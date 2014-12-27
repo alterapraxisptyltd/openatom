@@ -131,7 +131,7 @@ void atomfake_insert_table(void)
 	/* Fill in ATOM_ROM_HEADER structure */
 	memcpy (&(rom_header->sHeader), sheader, sizeof(ATOM_COMMON_TABLE_HEADER));
 	memcpy (rom_header->uaFirmWareSignature, "ATOM", 4);
-	rom_header->usIoBaseAddress = (unsigned short) base;
+	rom_header->usIoBaseAddress = (unsigned short) (uintptr_t) base;
 	rom_header->usSubsystemVendorID = subsystem_vendor;
 	rom_header->usSubsystemID = subsystem_device;
 }
