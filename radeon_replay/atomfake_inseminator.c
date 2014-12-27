@@ -120,10 +120,10 @@ void atomfake_insert_table(void)
 
 	base = get_atom_base();
 
-	ATOM_ROM_HEADER *rom_header;
+	ATOM_ROM_HEADER *rom_header = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER;
 	memset (rom_header, 0, sizeof (*rom_header)); // zero out structure
 
-	ATOM_COMMON_TABLE_HEADER *sheader;
+	ATOM_COMMON_TABLE_HEADER *sheader = rom_header; // sHeader is the first member of rom_header struct which is aligned
 	memset (sheader, 0, sizeof (*sheader)); // zero out structure
 	/* Fill in ATOM_COMMON_TABLE_HEADER */
 	sheader->usStructureSize = sizeof(ATOM_ROM_HEADER);
