@@ -18,7 +18,7 @@ static void* get_atom_base()
 		return NULL;
 	}
 
-	atom_base = mmap(0, 0x20000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0xa0000);
+	atom_base = mmap(0, 0x20000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0xc0000);
 	if (atom_base == MAP_FAILED) {
 		fprintf(stderr, "mmap() failed %s\n", strerror(errno));
 		return NULL;
