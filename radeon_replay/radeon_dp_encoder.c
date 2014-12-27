@@ -58,6 +58,11 @@ static const uint8_t object_header[] = {
  0x00, 0x00, 0x00, 0x00, 0x09, 0x06, 0x00, 0x01, 0x00, 0x00, 0xff
 };
 
+uint16_t read32(const uint8_t *raw)
+{
+	return (raw[3] << 24) | (raw[2] << 16) | (raw[1] << 8) | raw[0];
+}
+
 uint16_t read16(const uint8_t *raw)
 {
 	return (raw[1] << 8) | raw[0];
@@ -67,6 +72,7 @@ void radeon_dp_encoder_control(void)
 {
 	uint32_t work, rem;
 	uint16_t quot;
+	uint8_t parx, *fb;
 
 	static const uint8_t dat[] = {0x01, 0x1e, 0x00, 0x00, 0x02, 0x5a, 0x00, 0x00,
 		0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05, 0x5a,
@@ -91,9 +97,9 @@ void radeon_dp_encoder_control(void)
 	quot = 0x3114;
 	//   0021: 6616              SET_DATA_BLOCK  16  (Object_Info/Object_Header)
 	//   0023: 2d0c420600        ADD    WS_DATAPTR [..XX]  <-  data[0006] [..XX]
-	dptr = object_header + 6;
+	dptr = object_header + read16(object_header + 6);
 	//   0028: 0324410000        MOVE   WS_REMIND/HI32 [...X]  <-  data[0000] [...X]
-	for (rem = dptr[0]; ;rem --)
+	for (rem = dptr[0]; 0 ;rem --)
 	{
 		//   002d: 3e254100          COMP   WS_REMIND/HI32 [...X]  <-  00
 		//   0031: 44ac00            JUMP_Equal  00ac
@@ -113,43 +119,76 @@ void radeon_dp_encoder_control(void)
 	//   004d: 030c410800        MOVE   WS_REMIND/HI32 [..XX]  <-  data[0008] [..XX]
 	rem = read16(dptr + 8);
 	//   0052: 6616              SET_DATA_BLOCK  16  (Object_Info/Object_Header)
+	dptr = object_header;
 	//   0054: 2d0a4042          ADD    WS_QUOT/LOW32 [..XX]  <-  WS_DATAPTR [..XX]
+	/* FIXME: What am I supposed to do here? */
 	//   0058: 3e0d410000        COMP   WS_REMIND/HI32 [..XX]  <-  0000
 	//   005d: 449b00            JUMP_Equal  009b
+	if (rem == 0)
+		goto l_009b;
 	//   0060: 2d0a4241          ADD    WS_DATAPTR [..XX]  <-  WS_REMIND/HI32 [..XX]
+	dptr += rem;
 	//   0064: 560041            CLEAR  WS_REMIND/HI32 [XXXX]
 	//   0067: 0324410000        MOVE   WS_REMIND/HI32 [...X]  <-  data[0000] [...X]
-	//   006c: 03a4410100        MOVE   WS_REMIND/HI32 [.X..]  <-  data[0001] [...X]
-	//   0071: 3e2541ff          COMP   WS_REMIND/HI32 [...X]  <-  ff
-	//   0075: 449b00            JUMP_Equal  009b
-	//   0078: 3e254101          COMP   WS_REMIND/HI32 [...X]  <-  01
-	//   007c: 498400            JUMP_NotEqual  0084
-	//   007f: 0224000200        MOVE   param[00]  [...X]  <-  data[0002] [...X]
-	//   0084: 3e254102          COMP   WS_REMIND/HI32 [...X]  <-  02
-	//   0088: 499400            JUMP_NotEqual  0094
-	//   008b: 0264000200        MOVE   param[00]  [..X.]  <-  data[0002] [...X]
-	//   0090: 32650001          SUB    param[00]  [..X.]  <-  01
-	//   0094: 2d1a4241          ADD    WS_DATAPTR [..XX]  <-  WS_REMIND/HI32 [XX..]
-	//   0098: 436700            JUMP   0067
+	do {
+		rem = dptr[0];
+		//   006c: 03a4410100        MOVE   WS_REMIND/HI32 [.X..]  <-  data[0001] [...X]
+		rem |= dptr[1] << 16;
+		//   0071: 3e2541ff          COMP   WS_REMIND/HI32 [...X]  <-  ff
+		//   0075: 449b00            JUMP_Equal  009b
+		if ((rem & 0xff) == 0xff)
+			break;
+		//   0078: 3e254101          COMP   WS_REMIND/HI32 [...X]  <-  01
+		//   007c: 498400            JUMP_NotEqual  0084
+		if ((rem & 0xff) == 0x01)
+			//   007f: MOVE   param[00]  [...X]  <-  data[0002] [...X]
+			/* FIXME */
+		//   0084: COMP   WS_REMIND/HI32 [...X]  <-  02
+		//   0088:  JUMP_NotEqual  0094
+		if ((rem & 0xff) != 0x02) {
+			//   008b: 0264000200        MOVE   param[00]  [..X.]  <-  data[0002] [...X]
+			//   0090: 32650001          SUB    param[00]  [..X.]  <-  01
+			parx += dptr[2] - 1;
+		}
+		//   0094: 2d1a4241          ADD    WS_DATAPTR [..XX]  <-  WS_REMIND/HI32 [XX..]
+		dptr += rem >> 16;
+		//   0098: 436700            JUMP   0067
+	} while(1);
+ l_009b:
+	fprintf(stderr, "damn fucking label\n");
 	//   009b: 030a4240          MOVE   WS_DATAPTR [..XX]  <-  WS_QUOT/LOW32 [..XX]
 	//   009f: 030c410100        MOVE   WS_REMIND/HI32 [..XX]  <-  data[0001] [..XX]
+	rem = (rem & ~0xffff) | read16(dptr + 1);
 	//   00a4: 3e0d410000        COMP   WS_REMIND/HI32 [..XX]  <-  0000
 	//   00a9: 49b000            JUMP_NotEqual  00b0
-	//   00ac: 560842            CLEAR  WS_DATAPTR [..XX]
-	//   00af: 5b                EOT
+	if ((rem & 0xffff) == 0)
+		//   00ac: 560842            CLEAR  WS_DATAPTR [..XX]
+		//   00af: 5b                EOT
+		// FIXME: return;
 	//   00b0: 4222006302ba005a5a
 	//                           SWITCH  work[00]   [...X]
 	//         02->00ba
-	//   00b9: 5b                EOT
+	if (work != 0x02)
+		//   00b9: 5b                EOT
+		return;
 	//   00ba: 66ff              SET_DATA_BLOCK  ff  (this table)
 	//   00bc: 2d0d421a03        ADD    WS_DATAPTR [..XX]  <-  031a
+	dptr = dat;
 	//   00c1: 030541804c0000    MOVE   WS_REMIND/HI32 [XXXX]  <-  00004c80
-	//   00c8: 3b0241            SET_FB_BASE  WS_REMIND/HI32 [XXXX]
-	//   00cb: 0404000000        MOVE   fb[00]     [XXXX]  <-  data[0000] [XXXX]
-	//   00d0: 2d0d420400        ADD    WS_DATAPTR [..XX]  <-  0004
-	//   00d5: 2d054104000000    ADD    WS_REMIND/HI32 [XXXX]  <-  00000004
-	//   00dc: 3f0500ffffffff    COMP   fb[00]     [XXXX]  <-  ffffffff
-	//   00e3: 49c800            JUMP_NotEqual  00c8
+	rem = 0x4c80;
+	{
+		//   00c8: SET_FB_BASE  WS_REMIND/HI32 [XXXX]
+		//   00cb: MOVE   fb[00]     [XXXX]  <-  data[0000] [XXXX]
+		fb = (void*)(uintptr_t)read32(dptr); /* Segfault bitch */
+		fprintf(stderr, "the focken beiz iz %p\n", fb);
+		while(1);
+		//   00d0: ADD    WS_DATAPTR [..XX]  <-  0004
+		dptr += 4;
+		//   00d5: ADD    WS_REMIND/HI32 [XXXX]  <-  00000004
+		rem += 4;
+		//   00dc: COMP   fb[00]     [XXXX]  <-  ffffffff
+		//   00e3: JUMP_NotEqual  00c8
+	}
 	//   00e6: 6606              SET_DATA_BLOCK  06  (LVDS_Info)
 	//   00e8: 0324413400        MOVE   WS_REMIND/HI32 [...X]  <-  data[0034] [...X]
 	//   00ed: 15254102          SHIFT_LEFT  WS_REMIND/HI32 [...X]  by  02
