@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+/* Hah! silly comment. struct should be manipulated in host, then serialized
+ * into little endian order. No compiler pragma/shit needed. */
 // Hack !!! silly AMD.. struct's should use pragma aligned on each..
 #pragma pack(1)                                       /* BIOS data must use byte aligment */
 
