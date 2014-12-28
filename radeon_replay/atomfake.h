@@ -23,27 +23,27 @@
   Every table pointed  _ATOM_MASTER_DATA_TABLE has this common header.
   And the pointer actually points to this header. */
 
-typedef struct _ATOM_COMMON_TABLE_HEADER
+struct atom_commmon_table_header
 {
-  uint16_t usStructureSize;
-  uint8_t  ucTableFormatRevision;   /*Change it when the Parser is not backward compatible */
-  uint8_t  ucTableContentRevision;  /*Change it only when the table needs to change but the firmware */
+  uint16_t size;
+  uint8_t  format_rev;   /*Change it when the Parser is not backward compatible */
+  uint8_t  content_rev;  /*Change it only when the table needs to change but the firmware */
                                   /*Image can't be updated, while Driver needs to carry the new table! */
-}ATOM_COMMON_TABLE_HEADER;
+};
 
 /****************************************************************************/
 // Structure stores the ROM header.
 /****************************************************************************/
 struct atom_rom_header
 {
-  ATOM_COMMON_TABLE_HEADER		sHeader;
+  struct atom_commmon_table_header tbl_hdr;
   uint8_t atom_signature[4];    /*Signature to distinguish between Atombios and non-atombios,
                                       atombios should init it as "ATOM", don't change the position */
   uint16_t usBiosRuntimeSegmentAddress;
   uint16_t usProtectedModeInfoOffset;
   uint16_t usConfigFilenameOffset;
   uint16_t usCRC_BlockOffset;
-  uint16_t usBIOS_BootupMessageOffset;
+  uint16_t atom_string_ptr;
   uint16_t usInt10Offset;
   uint16_t usPciBusDevInitCode;
   uint16_t usIoBaseAddress;

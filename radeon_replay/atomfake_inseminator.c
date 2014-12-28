@@ -143,18 +143,45 @@ size_t put_pci_data(void *base, const struct pci_data *ph)
 	return PCI_DATA_STRUCT_SIZE;
 }
 
+size_t put_atom_common_header(void *base, const struct atom_commmon_table_header *ach)
+{
+	put_le16(ach->size, base);
+	put_8(ach->content_rev, base + 2);
+	put_8(ach->format_rev, base + 3);
+	return 4;
+}
+
 size_t put_atom_rom_header(void *base, const struct atom_rom_header *arh)
 {
+	put_atom_common_header(base, &arh->tbl_hdr);
 	memcpy(base + 4, arh->atom_signature, sizeof(arh->atom_signature));
+	put_le16(arh->atom_string_ptr, base + 0x10);
 	put_le16(arh->cmd_table_ptr, base + 0x1e);
 	put_le16(arh->data_table_ptr, base+ 0x20);
-	return 0x40;
+	return 0x24;
+}
+
+size_t put_atom_null_cmd_table_list(void *base)
+{
+	struct atom_commmon_table_header ach;
+	ach.size = 4;
+	ach.content_rev = ach.format_rev = 1;
+	return put_atom_common_header(base, &ach);
+}
+
+size_t put_atom_data_table_list(void *base)
+{
+	struct atom_commmon_table_header ach;
+	ach.size = 4;
+	ach.content_rev = ach.format_rev = 1;
+	return put_atom_common_header(base, &ach);
 }
 
 void atomfake_insert_table(void)
 {
 	void *base;
-	size_t where_am_i, pci_data_ptr, arh_ptr, atom_data_table_ptr;
+	size_t where_am_i, pci_data_ptr, arh_ptr, atom_str_ptr,
+		atom_cmd_table_ptr, atom_data_table_ptr;
 	int subsystem_vendor = 0x1002, subsystem_device = 0x990b; // XXX set these to your card..
 
 	struct atom_pci_header ah = {
@@ -171,6 +198,11 @@ void atomfake_insert_table(void)
 	};
 
 	struct atom_rom_header atomh = {
+		.tbl_hdr = {
+			.size = 0x24,
+			.format_rev = 1,
+			.content_rev = 1,
+		},
 		.ucReserved = 0x69,
 	};
 
@@ -185,7 +217,24 @@ void atomfake_insert_table(void)
 	/* Start writing our tables */
 	where_am_i = ATOM_HEADER_SIZE;
 
+	/* ID string */
+	atom_str_ptr = where_am_i;
+	const char stringie[] = "this_is_coreboot";
+	memcpy(base + where_am_i, stringie, sizeof(stringie));
+	where_am_i += (sizeof(stringie) + 3) & ~3;
+
+	/* Empty ATOM command table list */
+	atom_cmd_table_ptr = where_am_i;
+	where_am_i += put_atom_null_cmd_table_list(base + atom_cmd_table_ptr);
+
+	/* ATOM data table list*/
+	atom_data_table_ptr = where_am_i;
+	where_am_i += put_atom_data_table_list(base + atom_data_table_ptr);
+
 	/* ATOM master table */
+	atomh.atom_string_ptr = atom_str_ptr;
+	atomh.cmd_table_ptr = atom_cmd_table_ptr;
+	atomh.data_table_ptr = atom_data_table_ptr;
 	arh_ptr = where_am_i;
 	where_am_i += put_atom_rom_header(base + arh_ptr, &atomh);
 
