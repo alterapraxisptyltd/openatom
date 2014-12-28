@@ -18,6 +18,18 @@ static void dump_array(const uint8_t *what, size_t len)
 	}
 	printf("\n");
 }
+extern uint8_t more_compute_mem_eng_pll(uint32_t *clock);
+static void localtest(void)
+{
+	uint8_t div;
+	uint32_t i, freq;
+
+	for (i = 0; i < 200000; i += 1000) {
+		freq = i;
+		div = more_compute_mem_eng_pll(&freq);
+		printf("Want %u, got %u, div %u\n", i, freq, div);
+	}
+}
 
 int main(void)
 {
@@ -26,11 +38,13 @@ int main(void)
 	struct edid edid;
 	printf("radeon_replay AtomBIOS replayer\n");
 
+	localtest();
+
 	if (ioperm(0x2000, 0x2000, 1) || ioperm(0x300, 0x100, 1)) {
 		printf("No IO permissions. Are we root?\n");
 		return 1;
 	}
-#if 0
+#if 1
 	run_radeon_tests();
 
 	printf("Trying to write a fake atombios table\n");
@@ -52,6 +66,7 @@ int main(void)
 	}
 
 	decode_edid(edid_raw, sizeof(edid_raw), &edid);
+	return 0;
 #endif
 	run_radeon_tests();
 

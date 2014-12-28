@@ -12,7 +12,7 @@ SRCS=radeon_replay.c \
 
 OBJS = $(sort ${SRCS:.c=.o})
 
-CFLAGS += -Wall
+CFLAGS += -Wall -g3
 REMOTE := mrnuke@192.168.1.141:/home/mrnuke
 SCP := scp
 
