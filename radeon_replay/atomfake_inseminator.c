@@ -119,72 +119,100 @@ static size_t put_pci_header(void *base, const struct rom_header *rh)
 	put_le16(rh->signature, base + 0);
 	put_8(rh->size, base + 2);
 	memcpy(base + 3, rh->init, 3);
-	put_le16(rh->data, base + 0x18);
+	put_le16(rh->data_ptr, base + 0x18);
 	return ROM_HEADER_SIZE;
 }
 
-size_t put_atom_header(void *base, const struct atom_header *ah)
+size_t put_atom_header(void *base, const struct atom_pci_header *ah)
 {
-	size_t mansize;
 	memset(base, 0, ATOM_HEADER_SIZE);
-	mansize = put_pci_header(base, &ah->rh);
+	put_pci_header(base, &ah->rh);
 	memcpy(base + 0x30, ah->atom_magic, sizeof(ah->atom_magic));
-	return mansize * 7;
+	put_le16(ah->atom_rh_ptr, base + 0x48);
+	return ATOM_HEADER_SIZE;
 }
 
-void put_pci_data(void *base, const struct pci_data *ph)
+size_t put_pci_data(void *base, const struct pci_data *ph)
 {
 	memset(base, 0, PCI_DATA_STRUCT_SIZE);
 	memcpy(base + 0, &ph->signature, sizeof(ph->signature));
 	put_le16(ph->vendor, base + 4);
 	put_le16(ph->device, base + 6);
+	put_le16(ph->ilen, base + 16);
+	put_8(ph->type, base + 21);
+	return PCI_DATA_STRUCT_SIZE;
+}
+
+size_t put_atom_rom_header(void *base, const struct atom_rom_header *arh)
+{
+	memcpy(base + 4, arh->atom_signature, sizeof(arh->atom_signature));
+	put_le16(arh->cmd_table_ptr, base + 0x1e);
+	put_le16(arh->data_table_ptr, base+ 0x20);
+	return 0x40;
 }
 
 void atomfake_insert_table(void)
 {
 	void *base;
-	size_t where_am_i;
+	size_t where_am_i, pci_data_ptr, arh_ptr, atom_data_table_ptr;
 	int subsystem_vendor = 0x1002, subsystem_device = 0x990b; // XXX set these to your card..
 
-	struct atom_header ah = {
+	struct atom_pci_header ah = {
 		.rh = {
 			.signature = 0xaa55,
-			.size = 10, /* FIXME */
-			.data = ROM_HEADER_SIZE,
 		},
 	};
 
 	struct  pci_data ph = {
 		.vendor = subsystem_vendor,
 		.device = subsystem_device,
+		.ilen = 0x7d,
+		.type = 0x80,
+	};
+
+	struct atom_rom_header atomh = {
+		.ucReserved = 0x69,
 	};
 
 	memcpy(ah.atom_magic, ATOMBIOS_MAGIC, sizeof(ah.atom_magic));
-	memcpy(&ph.signature, "PCIR", 4);
+	memcpy(ph.signature, "PCIR", 4);
+	memcpy(atomh.atom_signature, "ATOM", 4);
 
 	base = get_atom_base();
 
 	memset(base, 0, 0x200);
 
+	/* Start writing our tables */
 	where_am_i = ATOM_HEADER_SIZE;
-	put_pci_data(base + where_am_i, &ph);
 
-	ah.rh.data = where_am_i;
+	/* ATOM master table */
+	arh_ptr = where_am_i;
+	where_am_i += put_atom_rom_header(base + arh_ptr, &atomh);
+
+	/* PCIR table */
+	pci_data_ptr = where_am_i;
+	ph.ilen = (where_am_i + 512 - 1) / 512;
+	where_am_i += put_pci_data(base + pci_data_ptr, &ph);
+
+	/* Option ROM header with ATOMBIOS extensions */
+	ah.rh.data_ptr = pci_data_ptr;
+	ah.rh.size = where_am_i;
+	ah.atom_rh_ptr = arh_ptr;
 	put_atom_header(base, &ah);
 
-	ATOM_ROM_HEADER *rom_header = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER;
+	//ATOM_ROM_HEADER *rom_header = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER;
 	////memset (rom_header, 0, sizeof (*rom_header)); // zero out structure
 
-	ATOM_COMMON_TABLE_HEADER *sheader = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER; // sHeader is the first member of rom_header struct which is aligned
+	//ATOM_COMMON_TABLE_HEADER *sheader = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER; // sHeader is the first member of rom_header struct which is aligned
 	////memset (sheader, 0, sizeof (*sheader)); // zero out structure
 	/* Fill in ATOM_COMMON_TABLE_HEADER */
-	sheader->usStructureSize = sizeof(ATOM_ROM_HEADER);
+	//sheader->usStructureSize = sizeof(ATOM_ROM_HEADER);
 
 	/* Fill in ATOM_ROM_HEADER structure */
-	memcpy (&(rom_header->sHeader), sheader, sizeof(ATOM_COMMON_TABLE_HEADER));
-	memcpy (rom_header->uaFirmWareSignature, "ATOM", 4);
-	rom_header->usIoBaseAddress = (unsigned short) (uintptr_t) base;
-	rom_header->usSubsystemVendorID = subsystem_vendor;
-	rom_header->usSubsystemID = subsystem_device;
+	//memcpy (&(rom_header->sHeader), sheader, sizeof(ATOM_COMMON_TABLE_HEADER));
+	//memcpy (rom_header->uaFirmWareSignature, "ATOM", 4);
+	//rom_header->usIoBaseAddress = (unsigned short) (uintptr_t) base;
+	//rom_header->usSubsystemVendorID = subsystem_vendor;
+	//rom_header->usSubsystemID = subsystem_device;
 }
 

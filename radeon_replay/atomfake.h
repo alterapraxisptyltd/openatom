@@ -34,10 +34,10 @@ typedef struct _ATOM_COMMON_TABLE_HEADER
 /****************************************************************************/
 // Structure stores the ROM header.
 /****************************************************************************/
-typedef struct _ATOM_ROM_HEADER
+struct atom_rom_header
 {
   ATOM_COMMON_TABLE_HEADER		sHeader;
-  uint8_t	 uaFirmWareSignature[4];    /*Signature to distinguish between Atombios and non-atombios,
+  uint8_t atom_signature[4];    /*Signature to distinguish between Atombios and non-atombios,
                                       atombios should init it as "ATOM", don't change the position */
   uint16_t usBiosRuntimeSegmentAddress;
   uint16_t usProtectedModeInfoOffset;
@@ -50,11 +50,11 @@ typedef struct _ATOM_ROM_HEADER
   uint16_t usSubsystemVendorID;
   uint16_t usSubsystemID;
   uint16_t usPCI_InfoOffset;
-  uint16_t usMasterCommandTableOffset; /*Offset for SW to get all command table offsets, Don't change the position */
-  uint16_t usMasterDataTableOffset;   /*Offset for SW to get all data table offsets, Don't change the position */
+  uint16_t cmd_table_ptr; /*Offset for SW to get all command table offsets, Don't change the position */
+  uint16_t data_table_ptr;   /*Offset for SW to get all data table offsets, Don't change the position */
   uint8_t  ucExtendedFunctionCode;
   uint8_t  ucReserved;
-}ATOM_ROM_HEADER;
+};
 
 /****************************************************************************/
 // Structures used in Command.mtb
@@ -169,14 +169,15 @@ struct rom_header {
 	uint16_t	signature;
 	uint8_t		size;
 	uint8_t		init[3];
-	uint16_t	data;
+	uint16_t	data_ptr;
 };
 
 #define ATOMBIOS_MAGIC		" 761295520"
 
-struct atom_header {
+struct atom_pci_header {
 	struct rom_header rh;
 	uint8_t atom_magic[10];
+	uint16_t atom_rh_ptr;
 };
 
 #define ROM_HEADER_SIZE		0x1a
