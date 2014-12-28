@@ -290,6 +290,90 @@ void memory_controller_init(void)
 	//   0031: 5b                EOT
 }
 
+typedef struct _COMPUTE_MEMORY_ENGINE_PLL_PARAMETERS_V4
+{
+	uint32_t  ulClock:24;         //Input= target clock, output = actual clock
+	uint32_t  ucPostDiv:8;        //return parameter: post divider which is used to program to register directly
+}COMPUTE_MEMORY_ENGINE_PLL_PARAMETERS_V4;
+
+#define boot_engine_clock 20000
+#define DIV_UP(x, y)	(((x) + (y) - 1) / (y))
+uint8_t more_compute_mem_eng_pll(uint32_t *clock)
+{
+	uint8_t rettie;
+	uint32_t win, quot, rem;
+	struct pulapar {
+		uint16_t min;
+		uint16_t max;
+		uint16_t _4;
+		uint16_t gran;
+	} pllpar[3] = { {0x00c8, 0x0640, 0x0008, 0x0019},
+			{0x0640, 0x0c80, 0x0040, 0x0032},
+			{0x0c80, 0x1838, 0x0060, 0x0064} };
+	struct pulapar *data;
+	// 0006: 080500ffffff00    AND    clock  <-  00ffffff
+	// 000d: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
+	// 000f: MOVE   WS_FB_WIN [XXXX]  <-  data[0008] [XXXX]
+	win = boot_engine_clock;
+	// 0014: MOVE   WS_QUOT/LOW32 [XXXX]  <-  00001838
+	quot = 0x1838;
+	// 001b: COMP   clock  <-  00000000
+	// 0022: JUMP_Equal  005d
+	if (*clock != 0) {
+		// 0025: MUL    WS_FB_WIN [XXXX]  <-  00000064
+		//win *= 0x64;	// LOW32 = result;
+		quot = boot_engine_clock * 100;
+		// 002c: ADD    WS_QUOT/LOW32 [XXXX]  <-  clock
+		// 0030: SUB    WS_QUOT/LOW32 [XXXX]  <-  00000001
+		// 0037: DIV    WS_QUOT/LOW32 [XXXX]  <-  clock
+		quot = DIV_UP(quot, *clock -1);
+		// 003b: COMP   WS_QUOT/LOW32 [XXXX]  <-  00001838
+		// 0042: JUMP_Below  004c
+		// 0045: MOVE   WS_QUOT/LOW32 [XXXX]  <-  00001838
+		quot = min(quot, 0x1838);
+		// 004c: COMP   WS_QUOT/LOW32 [XXXX]  <-  000000c8
+		// 0053: JUMP_Above  005d
+		// 0056: MOVE   WS_QUOT/LOW32 [XXXX]  <-  000000c8
+		quot = max(quot, 0xc8);
+	}
+	// 005d: SET_DATA_BLOCK  ff  (this table)
+	// 005f: ADD    WS_DATAPTR [..XX]  <-  00bb
+	data = pllpar;
+	// 0064: COMP   WS_QUOT/LOW32 [..XX]  <-  data[0002] [..XX]
+	// 0069: JUMP_BelowOrEq  0074
+	while (quot > data->max) {
+		// 006c: ADD    WS_DATAPTR [..XX]  <-  0008
+		data++;
+		// 0071: JUMP   0064
+	}
+	// 0074: SUB    WS_QUOT/LOW32 [..XX]  <-  data[0000] [..XX]
+	// 0079: ADD    WS_QUOT/LOW32 [..XX]  <-  data[0006] [..XX]
+	// 007e: SUB    WS_QUOT/LOW32 [..XX]  <-  0001
+	// 0083: DIV    WS_QUOT/LOW32 [..XX]  <-  data[0006] [..XX]
+	// 0088: ADD    WS_QUOT/LOW32 [..XX]  <-  data[0004] [..XX]
+	quot = DIV_UP(quot - data->min, data->gran) + data->_4;
+	// 008d: MOVE   param[00]  [X...]  <-  WS_QUOT/LOW32 [...X]
+	rettie = quot & 0xff;
+	// 0091: SUB    WS_QUOT/LOW32 [..XX]  <-  data[0004] [..XX]
+	// 0096: MUL    WS_QUOT/LOW32 [..XX]  <-  data[0006] [..XX]
+	// 009b: ADD    WS_QUOT/LOW32 [..XX]  <-  data[0000] [..XX]
+	quot = (quot - data->_4) * data->gran + data->min;
+	// 00a0: MOVE   WS_REMIND/HI32 [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+	rem = quot;
+	// 00a4: MUL    WS_FB_WIN [XXXX]  <-  00000064
+	//win *= 0x64;
+	quot = win * 100;
+	// 00ab: DIV    WS_QUOT/LOW32 [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+	quot /= rem;
+	// 00af: MOVE   param[00]  [..XX]  <-  WS_QUOT/LOW32 [..XX]
+	// 00b3: MOVE   param[00]  [.X..]  <-  WS_QUOT/LOW32 [.X..]
+	*clock = quot;
+	// 00b7: EOT
+	return rettie;
+	// 00b8: 7a1800c8004006080019004006800c40003200800c381860006400
+	//                           CTB_DS  24 bytes
+}
+
 void compute_memory_engine_pll(uint32_t *parb0)
 {
 	uint32_t quot, rem, win;

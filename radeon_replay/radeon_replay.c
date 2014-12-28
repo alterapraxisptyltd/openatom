@@ -30,6 +30,18 @@ static void dump_array(const uint8_t *what, size_t len)
 	}
 	printf("\n");
 }
+extern uint8_t more_compute_mem_eng_pll(uint32_t *clock);
+static void localtest(void)
+{
+	uint8_t div;
+	uint32_t i, freq;
+
+	for (i = 0; i < 200000; i += 1000) {
+		freq = i;
+		div = more_compute_mem_eng_pll(&freq);
+		printf("Want %u, got %u, div %u\n", i, freq, div);
+	}
+}
 
 static void print_help(void)
 {

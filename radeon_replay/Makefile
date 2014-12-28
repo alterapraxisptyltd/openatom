@@ -23,7 +23,7 @@ MODULES = aruba
 LIBS=$(sort ${MODULES:%=lib%.a})
 VPATH=$(MODULES)
 
-CFLAGS += -Wall -I$(shell pwd)
+CFLAGS += -Wall -g3 -I$(shell pwd)
 REMOTE := mrnuke@192.168.1.141:/home/mrnuke
 SCP := scp
 
