@@ -113,18 +113,70 @@ generate_fake_intel_oprom(const struct i915_gpu_controller_info *conf,
 }
 #endif
 
+static size_t put_pci_header(void *base, const struct rom_header *rh)
+{
+	memset(base, 0, ROM_HEADER_SIZE);
+	put_le16(rh->signature, base + 0);
+	put_8(rh->size, base + 2);
+	memcpy(base + 3, rh->init, 3);
+	put_le16(rh->data, base + 0x18);
+	return ROM_HEADER_SIZE;
+}
+
+size_t put_atom_header(void *base, const struct atom_header *ah)
+{
+	size_t mansize;
+	memset(base, 0, ATOM_HEADER_SIZE);
+	mansize = put_pci_header(base, &ah->rh);
+	memcpy(base + 0x30, ah->atom_magic, sizeof(ah->atom_magic));
+	return mansize * 7;
+}
+
+void put_pci_data(void *base, const struct pci_data *ph)
+{
+	memset(base, 0, PCI_DATA_STRUCT_SIZE);
+	memcpy(base + 0, &ph->signature, sizeof(ph->signature));
+	put_le16(ph->vendor, base + 4);
+	put_le16(ph->device, base + 6);
+}
+
 void atomfake_insert_table(void)
 {
 	void *base;
+	size_t where_am_i;
 	int subsystem_vendor = 0x1002, subsystem_device = 0x990b; // XXX set these to your card..
+
+	struct atom_header ah = {
+		.rh = {
+			.signature = 0xaa55,
+			.size = 10, /* FIXME */
+			.data = ROM_HEADER_SIZE,
+		},
+	};
+
+	struct  pci_data ph = {
+		.vendor = subsystem_vendor,
+		.device = subsystem_device,
+	};
+
+	memcpy(ah.atom_magic, ATOMBIOS_MAGIC, sizeof(ah.atom_magic));
+	memcpy(&ph.signature, "PCIR", 4);
 
 	base = get_atom_base();
 
+	memset(base, 0, 0x200);
+
+	where_am_i = ATOM_HEADER_SIZE;
+	put_pci_data(base + where_am_i, &ph);
+
+	ah.rh.data = where_am_i;
+	put_atom_header(base, &ah);
+
 	ATOM_ROM_HEADER *rom_header = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER;
-	memset (rom_header, 0, sizeof (*rom_header)); // zero out structure
+	////memset (rom_header, 0, sizeof (*rom_header)); // zero out structure
 
 	ATOM_COMMON_TABLE_HEADER *sheader = base + OFFSET_TO_POINTER_TO_ATOM_ROM_HEADER; // sHeader is the first member of rom_header struct which is aligned
-	memset (sheader, 0, sizeof (*sheader)); // zero out structure
+	////memset (sheader, 0, sizeof (*sheader)); // zero out structure
 	/* Fill in ATOM_COMMON_TABLE_HEADER */
 	sheader->usStructureSize = sizeof(ATOM_ROM_HEADER);
 
@@ -135,3 +187,4 @@ void atomfake_insert_table(void)
 	rom_header->usSubsystemVendorID = subsystem_vendor;
 	rom_header->usSubsystemID = subsystem_device;
 }
+

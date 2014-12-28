@@ -142,6 +142,65 @@ typedef struct _ATOM_MASTER_LIST_OF_COMMAND_TABLES {
   uint16_t DPEncoderService;											 //Function Table,only used by Bios
 } ATOM_MASTER_LIST_OF_COMMAND_TABLES;
 
+
+inline static void put_8(uint8_t val8, void *dest)
+{
+	uint8_t *b = dest;
+	b[0] = (val8 >> 0) & 0xff;
+};
+
+inline static void put_le16(uint16_t val16, void *dest)
+{
+	uint8_t *b = dest;
+	b[0] = (val16 >> 0) & 0xff;
+	b[1] = (val16 >> 8) & 0xff;
+};
+
+inline static void put_le32(uint32_t val32, void *dest)
+{
+	uint8_t *b = dest;
+	b[0] = (val32 >> 0) & 0xff;
+	b[1] = (val32 >> 8) & 0xff;
+	b[2] = (val32 >> 16) & 0xff;
+	b[3] = (val32 >> 24) & 0xff;
+};
+
+struct rom_header {
+	uint16_t	signature;
+	uint8_t		size;
+	uint8_t		init[3];
+	uint16_t	data;
+};
+
+#define ATOMBIOS_MAGIC		" 761295520"
+
+struct atom_header {
+	struct rom_header rh;
+	uint8_t atom_magic[10];
+};
+
+#define ROM_HEADER_SIZE		0x1a
+#define ATOM_HEADER_SIZE	0x4a
+
+struct  pci_data {
+	uint8_t		signature[4];
+	uint16_t	vendor;
+	uint16_t	device;
+	uint16_t	reserved_1;
+	uint16_t	dlen;
+	uint8_t		drevision;
+	uint8_t		class_lo;
+	uint16_t	class_hi;
+	uint16_t	ilen;
+	uint16_t	irevision;
+	uint8_t		type;
+	uint8_t		indicator;
+	uint16_t	reserved_2;
+};
+
+#define PCI_DATA_STRUCT_SIZE	24
+
 void atomfake_insert_table(void);
 
 #endif /* __ATOMFAKE_H */
+

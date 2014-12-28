@@ -55,6 +55,7 @@ int main(void)
 
 	decode_edid(edid_raw, sizeof(edid_raw), &edid);
 #endif
+	return 0;
 	run_radeon_tests();
 
 	asic_init();
