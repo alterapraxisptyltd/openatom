@@ -1,7 +1,8 @@
 #!/bin/make
 
 ARUBA_SRCS= \
-	dp_aux.c
+	dp_aux.c \
+	transmitter.c
 
 ARUBA_OBJS = $(sort ${ARUBA_SRCS:.c=.o})
 
