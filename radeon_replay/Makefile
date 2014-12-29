@@ -1,7 +1,7 @@
 SRCS=radeon_replay.c \
+	aruba_dp_aux.c \
 	atomfake_inseminator.c \
 	edid.c \
-	radeon_dp_aux.c \
 	radeon_dp_encoder.c \
 	radeon_util.c \
 	radeon_tests.c \
