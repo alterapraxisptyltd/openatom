@@ -6,7 +6,8 @@ ARUBA_SRCS= \
 	encoder.c \
 	init_misc.c \
 	misc.c \
-	pll.c
+	pll.c \
+	transmitter.c
 
 ARUBA_OBJS = $(sort ${ARUBA_SRCS:.c=.o})
 

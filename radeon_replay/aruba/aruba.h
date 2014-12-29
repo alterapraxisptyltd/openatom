@@ -13,6 +13,29 @@ enum pll_ids {
 	DCPLL = PPLL_0,
 };
 
+enum encoder_phy {
+	ENCODER_UNIPHY_A,
+	ENCODER_UNIPHY_B,
+	ENCODER_UNIPHY_C,
+	ENCODER_UNIPHY_D,
+	ENCODER_UNIPHY_E,
+	ENCODER_UNIPHY_F,
+	ENCODER_UNIPHY_G,
+};
+
+enum transmitter_mode {
+	TRANSMITTER_MODE_DP,
+	TRANSMITTER_MODE_LVDS,
+	TRANSMITTER_MODE_DVI,
+	TRANSMITTER_MODE_HDMI,
+	TRANSMITTER_MODE_DP_MST,
+};
+
+enum XMIT_FLAGS {
+	XMIT_FLAG_BLACKMAGIC = (1 << 0),
+	XMIT_FLAG_COHERENT = (1 << 1),
+};
+
 struct pll_settings {
 	uint32_t fb_div_frac;
 	uint16_t fb_div_int;
@@ -78,5 +101,16 @@ void aruba_init_pixel_pll(struct radeon_device * rdev, uint8_t pll_id);
 int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t vco_freq_mhz,
 			   uint32_t clock_khz, uint32_t default_clock_khz,
 			   uint16_t pcie_ss_percent);
+
+/* transmitter.c */
+void aruba_transmitter_enable(struct radeon_device *rdev, enum encoder_phy ephy,
+			      uint8_t num_lanes, uint32_t symbol_clk,
+			      enum pll_ids phy_src_pll,
+			      enum transmitter_mode phy_mode,
+			      uint8_t src_encoder_id,
+			      uint8_t hpd_id,
+			      uint32_t xmit_flags);
+void aruba_transmitter_vsemph(struct radeon_device *rdev, uint8_t phy_id,
+			      uint8_t lane_sel);
 
 #endif	/* __ARUBA_H */
