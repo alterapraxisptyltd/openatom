@@ -185,8 +185,9 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	int ret;
 	uint8_t hpd_id, ch_id;
 
-	hpd_id = chan->rec.hpd;
-	ch_id = chan->rec.i2c_id;
+	/* TODO: Actually, there are only five HPD pins and five AUX channels */
+	hpd_id = chan->rec.hpd & 0x7;
+	ch_id = chan->rec.i2c_id & 0x7;
 
 	ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
 			  recv, recv_size, reply);
