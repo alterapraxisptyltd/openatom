@@ -243,9 +243,6 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	hpd_id = chan->rec.hpd;
 	ch_id = chan->rec.i2c_id;
 
-	/* Default the reply field to something absurd */
-	*reply = 0xff;
-
 	/* Retry six times. That keeps us busy for 3ms or less */
 	for (retry = 0; retry < 6; retry++) {
 		ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
