@@ -185,34 +185,15 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	struct drm_device *dev = chan->dev;
 	struct radeon_device *rdev = dev->dev_private;
 
-	int ret, retry;
+	int ret;
 	uint8_t recv_bytes = 0, hpd_id, ch_id;
 
 	hpd_id = chan->rec.hpd;
 	ch_id = chan->rec.i2c_id;
 
-	/* Retry six times. That keeps us busy for 3ms or less */
-	for (retry = 0; retry < 6; retry++) {
-		ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
-				  recv, recv_size, &recv_bytes);
-		*reply = (ret & 0xff) >> 4;
-
-		if (ret == -EBUSY)
-			continue;
-		else if (ret < 0)
-			break;
-
-		switch (*reply & DP_AUX_NATIVE_REPLY_MASK) {
-		case DP_AUX_NATIVE_REPLY_ACK:
-			return recv_bytes;
-		case DP_AUX_NATIVE_REPLY_DEFER:
-			DRM_DEBUG_KMS("DP sink replied with AUX_DEFER\n");
-			usleep(400);
-			continue;
-		default:
-			return -EIO;
-		}
-	}
+	ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
+			  recv, recv_size, &recv_bytes);
+	*reply = (ret & 0xff) >> 4;
 
 	if (ret == -EIO) {
 		DRM_DEBUG_KMS("AUX channel error\n");
@@ -227,6 +208,38 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	if (ret == -EBUSY) {
 		DRM_DEBUG_KMS("AUX channel busy\n");
 		return -EBUSY;
+	}
+
+	return recv_bytes;
+}
+
+static int radeon_process_aux_ch_spinner(struct radeon_i2c_chan *chan,
+					 uint8_t *send, int send_bytes,
+					 uint8_t *recv, int recv_size,
+					 uint8_t delay, uint8_t *reply)
+{
+	int ret, retry;
+
+	/* Retry seven times, as required by DisplayPort specification */
+	for (retry = 0; retry < 7; retry++) {
+		ret = radeon_process_aux_ch_wrapper(chan, send, send_bytes,
+						    recv, recv_size, delay,
+						    reply);
+		if (ret == -EBUSY)
+			continue;
+		else if (ret < 0)
+			break;
+
+		switch (*reply & DP_AUX_NATIVE_REPLY_MASK) {
+		case DP_AUX_NATIVE_REPLY_ACK:
+			return ret;
+		case DP_AUX_NATIVE_REPLY_DEFER:
+			DRM_DEBUG_KMS("DP sink replied with AUX_DEFER\n");
+			usleep(400);
+			continue;
+		default:
+			return -EIO;
+		}
 	}
 
 	return ret;
@@ -251,7 +264,7 @@ static int radeon_dp_aux_native_read(uint8_t bus,
 	msg[2] = address;
 	msg[3] = recv_bytes - 1;
 
-	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
 					    recv, recv_bytes, delay, &reply);
 
 	return ret;
@@ -269,7 +282,7 @@ static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, ui
 	msg[3] = 0;
 	msg[4] = reg;
 
-	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
 					    NULL, 0, delay, &reply);
 
 	return ret;
@@ -284,7 +297,7 @@ static int radeon_dp_aux_i2c_stop(uint8_t bus, uint8_t address, uint8_t delay)
 	msg[1] = 0;
 	msg[2] = address;
 
-	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
 					    NULL, 0, delay, &reply);
 
 	return ret;
@@ -308,7 +321,7 @@ static int radeon_dp_aux_i2c_read(uint8_t bus, uint16_t address, uint8_t reg,
 	msg[2] = address;
 	msg[3] = recv_bytes - 1;
 
-	ret = radeon_process_aux_ch_wrapper(&my_i2c, msg, sizeof(msg),
+	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
 					    recv, recv_bytes, delay, &reply);
 
 	return ret;
