@@ -164,13 +164,11 @@ uint8_t radeon_init_aux_pads(void)
 static int do_aux_tran(struct radeon_device *rdev,
 		       uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
 		       const uint8_t *msg, uint8_t send_bytes,
-		       uint8_t *recv, uint8_t recv_size, uint8_t *num_received)
+		       uint8_t *recv, uint8_t recv_size, uint8_t *reply)
 {
 	int i, wait;
 	uint32_t regptr;
-	uint8_t reply, num_bytes_received;
-
-	*num_received = 0;
+	uint8_t num_bytes_received;
 
 	regptr = channel_id * 0x04 << 2;
 	aruba_mask(rdev, 0x194c + regptr, 0, 0x01 << 16);
@@ -207,7 +205,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 
 	aruba_write(rdev, REG_DP_AUX_FIFO + regptr, 0x80000001);
 
-	reply = aux_channel_fifo_read(rdev, channel_id);
+	*reply = aux_channel_fifo_read(rdev, channel_id);
 	num_bytes_received = (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) >> 24) & 0x1f;
 	fprintf(stderr, "Gotz beck leik %u baitz %x\n", num_bytes_received, reply);
 
@@ -216,7 +214,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 
 	/* First byte is the reply field. The others are the data bytes */
 	if (--num_bytes_received == 0)
-		return reply;
+		return num_bytes_received;
 
 	for (i = 0; i < min(num_bytes_received, recv_size); i++)
 		recv[i] = aux_channel_fifo_read(rdev, channel_id);
@@ -225,8 +223,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 	for (; i < num_bytes_received; i++)
 		aux_channel_fifo_read(rdev, channel_id);
 
-	*num_received = num_bytes_received;
-	return reply;
+	return num_bytes_received;
 }
 
 static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
@@ -238,14 +235,15 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	struct radeon_device *rdev = dev->dev_private;
 
 	int ret;
-	uint8_t recv_bytes = 0, hpd_id, ch_id;
+	uint8_t hpd_id, ch_id;
 
 	hpd_id = chan->rec.hpd;
 	ch_id = chan->rec.i2c_id;
 
 	ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
-			  recv, recv_size, &recv_bytes);
-	*reply = (ret & 0xff) >> 4;
+			  recv, recv_size, reply);
+	/* The hardware gives us a full byte, but we need bits [4:7] */
+	*reply >>= 4;
 
 	if (ret == -EIO) {
 		DRM_DEBUG_KMS("AUX channel error\n");
@@ -262,7 +260,7 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 		return -EBUSY;
 	}
 
-	return recv_bytes;
+	return ret;
 }
 
 static int radeon_process_aux_ch_spinner(struct radeon_i2c_chan *chan,
