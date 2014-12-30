@@ -29,10 +29,21 @@ static void dump_array(const uint8_t *what, size_t len)
 	printf("\n");
 }
 
+static void print_help(void)
+{
+	printf("radeon_replay [ACTIONS]\n\n");
+	printf("  -h, --help   Print this message and exit\n");
+	printf("  -r, --replay Replay a VGA init (source: hp_1035dx)\n");
+	printf("  -t, --tests  Run a random assortment of tests\n");
+	printf("  -d, --dpcd   Read DisplayPort configuration data\n");
+	printf("  -e, --edid   Read EDID over AUX channel (DANGEROUS)\n");
+}
+
 static void parse_options(int argc, char *argv[], struct global_cfg *config)
 {
 	int opt, option_index = 0;
 	struct option long_options[] = {
+		{"help",	no_argument, 		0, 'h'},
 		{"replay",	no_argument,		0, 'r'},
 		{"tests",	no_argument,		0, 't'},
 		{"dpcd",	no_argument,		0, 'd'},
@@ -46,7 +57,7 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 	 * Parse arguments
 	 */
 	while (1) {
-		opt = getopt_long(argc, argv, "rtde",
+		opt = getopt_long(argc, argv, "hrtde",
 				  long_options, &option_index);
 
 		if (opt == EOF)
@@ -69,6 +80,9 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 			config->need_io_perm = true;
 			config->read_edid = true;
 			break;
+		case 'h':
+			print_help();
+			exit(EXIT_SUCCESS);
 		default:
 			/* Invalid option. getopt will have printed something */
 			exit(EXIT_FAILURE);
