@@ -92,7 +92,7 @@ static void aux_channel_fifo_write_start(struct radeon_device *rdev, uint8_t cha
 {
 	uint32_t reg;
 	reg = REG_DP_AUX_FIFO + (channel * 4 << 2);
-	aruba_write(rdev, reg, data << 8 | (1 << 31));
+	aruba_write(rdev, reg, (data << 8) | (1 << 31));
 }
 
 static void aux_channel_fifo_write(struct radeon_device *rdev, uint8_t channel, uint8_t data)
