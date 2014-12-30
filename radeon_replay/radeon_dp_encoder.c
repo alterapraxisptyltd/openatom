@@ -1,5 +1,7 @@
 #include "radeon_init_native.h"
 
+#include <stdio.h>
+
 // command_table  00000000  #4a  (DIG1EncoderControl):
 //
 //   Attributes:  Work space size        00 longs
@@ -83,6 +85,8 @@ void radeon_dp_encoder_control(void)
 		0x00, 0x00, 0xff, 0xff, 0xff, 0xff};
 
 	const uint8_t *dptr;
+
+	fprintf(stderr, "TADA, encontrolly control\n");
 	//   0006: 370000            SET_ATI_PORT  0000  (INDIRECT_IO_MM)
 	//   0009: 6606              SET_DATA_BLOCK  06  (LVDS_Info)
 	//   000b: 0324004200        MOVE   work[00]   [...X]  <-  data[0042] [...X]
@@ -90,7 +94,7 @@ void radeon_dp_encoder_control(void)
 	//   0010: 3e250002          COMP   work[00]   [...X]  <-  02
 	//   0014: 451603            JUMP_Below  0316
 	if (work < 2)
-		return;
+		 /* Pretty please FIXME. I'll suck your dick in */;//return;
 	//   0017: 020d0000ff        MOVE   param[00]  [..XX]  <-  ff00
 	/* TODO */
 	//   001c: 030d401431        MOVE   WS_QUOT/LOW32 [..XX]  <-  3114
@@ -103,8 +107,10 @@ void radeon_dp_encoder_control(void)
 	{
 		//   002d: 3e254100          COMP   WS_REMIND/HI32 [...X]  <-  00
 		//   0031: 44ac00            JUMP_Equal  00ac
-		if (rem == 0)
-			return;
+		if (rem == 0) {
+			fprintf(stderr, "remo ret\n");
+			//return;
+		}
 		//   0034: 3e0c400400        COMP   WS_QUOT/LOW32 [..XX]  <-  data[0004] [..XX]
 		//   0039: 444800            JUMP_Equal  0048
 		if (quot == read16(dptr + 4))
