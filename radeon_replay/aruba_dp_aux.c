@@ -70,6 +70,13 @@ static struct radeon_i2c_chan my_i2c = {
 
 static const uint16_t padoff[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
 
+/*
+ * This tells us the offset of each AUX control block from the first block.
+ * It is given in number of 32-bit registers, so it needs to be multiplied by
+ * 4 before converting it to an address offset.
+ */
+static const uint16_t aux_ch_reg[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
+
 static void aruba_write(struct radeon_device *rdev, uint32_t reg, uint32_t value)
 {
 	radeon_reg_write(reg >> 2, value);
@@ -92,21 +99,21 @@ static void aruba_mask(struct radeon_device *rdev, uint32_t reg, uint32_t clrbit
 static void aux_channel_fifo_write_start(struct radeon_device *rdev, uint8_t channel, uint8_t data)
 {
 	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (channel * 4 << 2);
+	reg = REG_DP_AUX_FIFO + (aux_ch_reg[channel] << 2);
 	aruba_write(rdev, reg, (data << 8) | (1 << 31));
 }
 
 static void aux_channel_fifo_write(struct radeon_device *rdev, uint8_t channel, uint8_t data)
 {
 	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (channel * 4<< 2);
+	reg = REG_DP_AUX_FIFO + (aux_ch_reg[channel] << 2);
 	aruba_write(rdev, reg, data << 8);
 }
 
 static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint8_t channel)
 {
 	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (channel * 4 << 2);
+	reg = REG_DP_AUX_FIFO + (aux_ch_reg[channel] << 2);
 	return (aruba_read(rdev, reg) >> 8) & 0xff;
 }
 
@@ -124,7 +131,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0, 0x01 << 16);
 	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0xffff, 0);
 
-	regptr = channel_id * 0x14 << 2;
+	regptr = aux_ch_reg[channel_id] << 2;
 
 	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 20, (hpd_id & 0x7) << 20);
 	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0, 0x0101);
