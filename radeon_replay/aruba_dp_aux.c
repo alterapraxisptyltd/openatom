@@ -126,7 +126,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 
 	regptr = channel_id * 0x14 << 2;
 
-	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 28, (hpd_id & 0x7) << 28);
+	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 20, (hpd_id & 0x7) << 20);
 	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0, 0x0101);
 
 	/* Tell controller how many bytes we want to send */
