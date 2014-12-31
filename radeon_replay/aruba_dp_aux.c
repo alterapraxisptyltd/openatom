@@ -11,6 +11,7 @@
 #define REG_DP_AUX_CTL2			(0x1883 << 2)
 #define REG_DP_AUX_STATUS		(0x1884 << 2)
 #define REG_DP_AUX_FIFO			(0x1886 << 2)
+#define REG_AUX_PAD_EN_CTL		(0x194c << 2)
 
 #define DP_AUX_I2C_WRITE		0x0
 #define DP_AUX_I2C_READ			0x1
@@ -120,8 +121,8 @@ static int do_aux_tran(struct radeon_device *rdev,
 	uint8_t num_bytes_received;
 
 	regptr = channel_id * 0x04 << 2;
-	aruba_mask(rdev, 0x194c + regptr, 0, 0x01 << 16);
-	aruba_mask(rdev, 0x194c + regptr, 0xffff, 0);
+	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0, 0x01 << 16);
+	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0xffff, 0);
 
 	regptr = channel_id * 0x14 << 2;
 
