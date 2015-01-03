@@ -18,6 +18,7 @@ struct global_cfg {
 	bool run_tests;
 	bool read_dcpd;
 	bool read_edid;
+	bool do_haxorz_stuff;
 };
 
 static void dump_array(const uint8_t *what, size_t len)
@@ -52,16 +53,17 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 		{"dpcd",	no_argument,		0, 'd'},
 		{"edid",	no_argument,		0, 'e'},
 		{"trace",	no_argument,		0, 't'},
+		{"haxorz",	no_argument,		0, 'X'},
 		{0, 0, 0, 0}
 	};
 
 	memset(config, 0, sizeof(*config));
 
 	/*
-	 * Parse arguments
+	 * Parse argumentsx
 	 */
 	while (1) {
-		opt = getopt_long(argc, argv, "hrTdet",
+		opt = getopt_long(argc, argv, "hrtdetX",
 				  long_options, &option_index);
 
 		if (opt == EOF)
@@ -86,6 +88,10 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 			break;
 		case 't':
 			radeon_enable_iotracing();
+			break;
+		case 'X':
+			config->need_io_perm = true;
+			config->do_haxorz_stuff = true;
 			break;
 		case 'h':
 			print_help();
@@ -153,5 +159,10 @@ int main(int argc, char *argv[])
 
 		printf("Did it work ?\n");
 	}
+
+	if (config.do_haxorz_stuff) {
+		localtest();
+	}
+
 	return EXIT_SUCCESS;
 }
