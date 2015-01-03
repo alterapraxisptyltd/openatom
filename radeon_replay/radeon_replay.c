@@ -18,6 +18,7 @@ struct global_cfg {
 	bool run_tests;
 	bool read_dcpd;
 	bool read_edid;
+	bool do_haxorz_stuff;
 };
 
 static void dump_array(const uint8_t *what, size_t len)
@@ -35,10 +36,15 @@ const int32_t trymafreq[] = {20000, 10000, 53300, 40000, 0, 0, 53300, 40000, 0, 
 const int32_t trymafreq2[] = {5806, 5950, 6000, 6100, 6200, 6300, -1};
 
 extern uint8_t more_compute_mem_eng_pll(uint32_t *clock);
+void aruba_brightness_control(uint16_t bl_pwm_freq_hz, uint8_t bl_level);
+
 static void localtest(void)
 {
 	uint8_t div;
 	uint32_t i, freq;
+
+	aruba_brightness_control(200, 255);
+	return;
 
 	i = 0;
 	do {
@@ -75,16 +81,17 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 		{"dpcd",	no_argument,		0, 'd'},
 		{"edid",	no_argument,		0, 'e'},
 		{"trace",	no_argument,		0, 't'},
+		{"haxorz",	no_argument,		0, 'X'},
 		{0, 0, 0, 0}
 	};
 
 	memset(config, 0, sizeof(*config));
 
 	/*
-	 * Parse arguments
+	 * Parse argumentsx
 	 */
 	while (1) {
-		opt = getopt_long(argc, argv, "hrTdet",
+		opt = getopt_long(argc, argv, "hrtdetX",
 				  long_options, &option_index);
 
 		if (opt == EOF)
@@ -109,6 +116,10 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 			break;
 		case 't':
 			radeon_enable_iotracing();
+			break;
+		case 'X':
+			config->need_io_perm = true;
+			config->do_haxorz_stuff = true;
 			break;
 		case 'h':
 			print_help();
@@ -178,5 +189,10 @@ int main(int argc, char *argv[])
 
 		printf("Did it work ?\n");
 	}
+
+	if (config.do_haxorz_stuff) {
+		localtest();
+	}
+
 	return EXIT_SUCCESS;
 }
