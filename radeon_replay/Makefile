@@ -1,6 +1,7 @@
 SRCS=radeon_replay.c \
 	aruba_dp_aux.c \
 	edid.c \
+	linux_glue.c \
 	radeon_util.c \
 	vga_io.c \
 	vga_replay.c

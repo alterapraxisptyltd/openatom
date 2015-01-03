@@ -1,5 +1,5 @@
+#include "linux_glue.h"
 #include "radeon_init_native.h"
-#include "radeon_util.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -30,71 +30,12 @@
 #define DP_AUX_I2C_REPLY_DEFER		(0x2 << 2)
 #define DP_AUX_I2C_REPLY_MASK		(0x3 << 2)
 
-#define DRM_DEBUG_KMS(fmt, args...)				\
-	do {							\
-		fprintf(stderr, fmt, ##args);		\
-	} while (0)
-
-struct drm_device {
-	void *dev_private;
-};
-
-struct radeon_i2c_bus_rec {
-	uint8_t i2c_id;
-	uint8_t hpd;
-};
-struct radeon_i2c_chan {
-	struct drm_device *dev;
-	struct radeon_i2c_bus_rec rec;
-};
-
-struct radeon_device {
-	int dummy;
-};
-
-static struct radeon_device my_rdev = {
-	.dummy = 0,
-};
-
-static struct drm_device my_drm = {
-	.dev_private = &my_rdev,
-};
-
-static struct radeon_i2c_chan my_i2c = {
-	.dev = &my_drm,
-	.rec = {
-		.i2c_id = 0,
-		.hpd = 0,
-	},
-};
-
-static const uint16_t padoff[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
-
 /*
  * This tells us the offset of each AUX control block from the first block.
  * It is given in number of 32-bit registers, so it needs to be multiplied by
  * 4 before converting it to an address offset.
  */
 static const uint16_t aux_ch_reg[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
-
-static void aruba_write(struct radeon_device *rdev, uint32_t reg, uint32_t value)
-{
-	radeon_reg_write(reg >> 2, value);
-}
-
-static uint32_t aruba_read(struct radeon_device *rdev, uint32_t reg)
-{
-	return radeon_reg_read(reg >> 2);
-}
-
-
-static void aruba_mask(struct radeon_device *rdev, uint32_t reg, uint32_t clrbits, uint32_t setbits)
-{
-	uint32_t reg32 = aruba_read(rdev, reg);
-	reg32 &= ~clrbits;
-	reg32 |= setbits;
-	aruba_write(rdev, reg, reg32);
-}
 
 static void aux_channel_fifo_write_start(struct radeon_device *rdev, uint8_t channel, uint8_t data)
 {
