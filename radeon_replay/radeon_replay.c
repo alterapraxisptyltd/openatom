@@ -31,19 +31,66 @@ static void dump_array(const uint8_t *what, size_t len)
 	}
 	printf("\n");
 }
+
+struct DIG_TRANSMITTER_CONTROL_PARAMETERS_V1_5
+{
+	uint16_t usSymClock;                    // Encoder Clock in 10kHz,(DP mode)= linkclock/10, (TMDS/LVDS/HDMI)= pixel clock,  (HDMI deep color), =pixel clock * deep_color_ratio
+	uint8_t  ucPhyId;                   // 0=UNIPHYA, 1=UNIPHYB, 2=UNIPHYC, 3=UNIPHYD, 4= UNIPHYE 5=UNIPHYF
+	uint8_t  ucAction;                                  // define as ATOM_TRANSMITER_ACTION_xxx
+
+	uint8_t  ucLaneNum;                 // indicate lane number 1-8
+	uint8_t  ucConnObjId;               // Connector Object Id defined in ObjectId.h
+	uint8_t  ucDigMode;                 // indicate DIG mode
+	union{
+		//struct ATOM_DIG_TRANSMITTER_CONFIG_V5 asConfig;
+		uint8_t ucConfig;
+	};
+
+	uint8_t  ucDigEncoderSel;           // indicate DIG front end encoder
+	uint8_t  ucDPLaneSet;
+	uint8_t  ucReserved;
+	uint8_t  ucReserved1;
+};
+
+void aruba_transmitter_enable(struct radeon_device *rdev,
+			      struct DIG_TRANSMITTER_CONTROL_PARAMETERS_V1_5 *cfg);
+
 const int32_t trymafreq[] = {20000, 10000, 53300, 40000, 0, 0, 53300, 40000, 0, 0,
 			33489, 16744, 49656, 24828, 68572, 34286, 25000, -1};
 const int32_t trymafreq2[] = {5806, 5950, 6000, 6100, 6200, 6300, -1};
 
 extern uint8_t more_compute_mem_eng_pll(uint32_t *clock);
-void aruba_brightness_control(uint16_t bl_pwm_freq_hz, uint8_t bl_level);
+void aruba_brightness_control(struct radeon_device *rdev,
+			      uint16_t bl_pwm_freq_hz, uint8_t bl_level);
+extern void aruba_lcd_blon(struct radeon_device *rdev);
+extern void aruba_lcd_bloff(struct radeon_device *rdev, uint8_t max_pclk);
 
 static void localtest(void)
 {
 	uint8_t div;
 	uint32_t i, freq;
 
-	aruba_brightness_control(200, 255);
+	struct DIG_TRANSMITTER_CONTROL_PARAMETERS_V1_5 cfg = {
+		.usSymClock = 0x6978,
+		.ucPhyId = 0x04,
+		.ucAction = 0x01,
+		.ucLaneNum = 0x01,
+		.ucConnObjId = 0x0e, // CONNECTOR_OBJECT_ID_LVDS
+		.ucDigMode = 0,
+		.ucConfig = 0x1a,
+		.ucDigEncoderSel = 0x10,
+		.ucDPLaneSet = 0,
+	};
+
+	aruba_transmitter_enable(NULL, &cfg);
+	return;
+	//aruba_lcd_bloff(NULL, 0);
+	//return;
+	aruba_lcd_blon(NULL);
+	for (i = 0; i < 256; i++) {
+		aruba_brightness_control(NULL, 200, i);
+		radeon_udelay(100000/(i + 1));
+	}
 	return;
 
 	i = 0;
