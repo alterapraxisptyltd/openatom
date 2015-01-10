@@ -35,6 +35,26 @@ int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len);
 int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
 			   uint8_t *dest, uint8_t start, uint16_t len);
 
+/* encoder.c */
+void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
+			    uint16_t pixel_clock_khz, uint8_t lane_num,
+			    uint8_t bpc, uint32_t dp_link_rate);
+void aruba_encoder_setup_other(struct radeon_device *rdev, uint8_t id,
+			       uint8_t mode, uint8_t lane_num);
+void aruba_encoder_setup_panel_mode(struct radeon_device *rdev,
+				    uint8_t encoder_id, uint8_t panel_mode);
+void aruba_encoder_video_on(struct radeon_device *rdev, uint8_t encoder_id);
+void aruba_encoder_video_off(struct radeon_device *rdev, uint8_t encoder_id);
+void aruba_encoder_link_training_start(struct radeon_device *rdev,
+				       uint8_t encoder_id);
+void aruba_encoder_link_training_pattern(struct radeon_device *rdev,
+					 uint8_t encoder_id, uint8_t pattern);
+void aruba_encoder_link_training_finish(struct radeon_device *rdev,
+					uint8_t encoder_id);
+void aruba_set_encoder_crtc_source(struct radeon_device *rdev,
+				   uint8_t crtc_id, uint8_t encoder_id,
+				   uint8_t encoder_mode);
+
 /* init_misc.c */
 void dynamic_clock_gating_init_hp_1035dx(struct radeon_device *rdev);
 

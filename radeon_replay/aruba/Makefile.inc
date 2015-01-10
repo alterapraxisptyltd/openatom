@@ -3,6 +3,7 @@
 ARUBA_SRCS= \
 	crtc.c \
 	dp_aux.c \
+	encoder.c \
 	init_misc.c \
 	misc.c \
 	pll.c
