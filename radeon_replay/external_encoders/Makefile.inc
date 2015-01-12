@@ -1,0 +1,15 @@
+#!/bin/make
+
+EXTERNAL_ENCODER_SRCS= \
+	travis.c
+
+EXTERNAL_ENCODER_OBJS = $(sort ${EXTERNAL_ENCODER_SRCS:.c=.o})
+
+EXTERNAL_ENCODER_TARGET=libexternal_encoders.a
+
+
+$(EXTERNAL_ENCODER_TARGET): $(EXTERNAL_ENCODER_OBJS)
+	$(AR) -rcs $@ $^
+
+clean-external_encoders:
+	-$(RM) $(EXTERNAL_ENCODER_OBJS) $(EXTERNAL_ENCODER_TARGET)

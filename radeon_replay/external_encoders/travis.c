@@ -1,0 +1,278 @@
+#include "linux_glue.h"
+#include "drm_dp_helper.h"
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#define TRAVIS_DPCD_IDX		0x5f0
+#define TRAVIS_DPCD_DAT		0x5f2
+
+#define REG_TRAVIS_ID_LOW	2
+#define REG_TRAVIS_ID_HIGH	3
+
+#define ID_RTD2132_LOW		0x20
+#define ID_RTD2132_HIGH		0x31
+
+struct initial_reg {
+	uint16_t reg_addr;
+	uint8_t reg_val;
+};
+#define TERMINATE 0xffff
+
+static const struct initial_reg travis_other_encoder_parameters[];
+static const struct initial_reg travis_other_encoder_parameters_v2[];
+static const struct initial_reg rtd2132_registers[];
+static const struct initial_reg actual_rtd2132_registers[];
+
+uint8_t travis_read(struct radeon_device *rdev,
+			   uint16_t reg)
+{
+	struct drm_dp_aux *aux = &my_aux;
+	uint8_t val, buf[2] = { reg >> 8, reg & 0xff };
+
+	/* TODO: error handling */
+	drm_dp_dpcd_write(aux, TRAVIS_DPCD_IDX, buf, 2);
+	drm_dp_dpcd_readb(aux, TRAVIS_DPCD_DAT, &val);
+	return val;
+}
+
+void travis_write(struct radeon_device *rdev,
+			   uint16_t reg, uint8_t dat)
+{
+	struct drm_dp_aux *aux = &my_aux;
+	uint8_t buf[3] = {reg >> 8, reg & 0xff, dat};
+
+	/* TODO: error handling */
+	drm_dp_dpcd_write(aux, TRAVIS_DPCD_IDX, buf, 3);
+}
+
+void travis_get_some(uint8_t data[2])
+{
+	uint32_t win, adjusted_clk, rate_100khz;
+	const uint32_t ss_percent = 100;
+	const uint32_t ss_rate_khz = 4000;
+	const uint32_t pixel_clock_khz = 76300;
+
+	rate_100khz = ss_rate_khz / 100;
+
+	win = ss_percent * ss_percent * rate_100khz * 1024 / 381;
+	win += (ss_percent * rate_100khz) * 524288 / 625 * 16;
+
+	adjusted_clk = pixel_clock_khz * 56;
+
+	if (pixel_clock_khz > 16870)
+		adjusted_clk >>= 1;
+	if (pixel_clock_khz > 33750)
+		adjusted_clk >>= 1;
+	if (pixel_clock_khz > 67500)
+		adjusted_clk >>= 1;
+	if (pixel_clock_khz > 135000)
+		adjusted_clk >>= 1;
+
+	data[0] = (win / adjusted_clk) & 0xff;
+
+	rate_100khz <<= 9;
+	data[1] = (adjusted_clk / rate_100khz) & 0xff;
+	data[1] |=  0x80;
+}
+
+static void process_travis_table(struct radeon_device *rdev,
+				 const struct initial_reg *regs)
+{
+	while (regs->reg_addr != TERMINATE) {
+		travis_write(rdev, regs->reg_addr, regs->reg_val);
+		regs++;
+	}
+}
+
+void travis_init(struct radeon_device *rdev)
+{
+	uint8_t id;
+	const struct initial_reg *init_regs;
+
+	init_regs = travis_other_encoder_parameters;
+
+	id = travis_read(rdev, REG_TRAVIS_ID_LOW);
+	if (id == ID_RTD2132_LOW) {
+		id = travis_read(rdev, REG_TRAVIS_ID_HIGH);
+		if (id == ID_RTD2132_HIGH) {
+			init_regs = rtd2132_registers;
+			DRM_DEBUG_KMS("Goog. We're where we think we're supposed to be\n");
+		}
+	}
+
+	process_travis_table(rdev, init_regs);
+}
+
+static const struct initial_reg travis_other_encoder_parameters[] = {
+	{0x0005, 0x3d},	 //  0
+	{0x001f, 0x01},	 //  1
+	{0x00ba, 0x00},	 //  2
+	{0x00bb, 0x08},	 //  3
+	{0x00b1, 0x4b},	 //  4
+	{0x0173, 0x69},	 //  5
+	{0x019f, 0x26},	 //  6
+	{0x0019, 0x33},	 //  7
+	{0x0089, 0x39},	 //  8
+	{0x019e, 0x05},	 //  9
+	{0x01cb, 0x80},	 //  a
+	{0x0016, 0x44},	 //  b
+	{0x00f1, 0x20},	 //  c
+	{0x00dc, 0x00},	 //  d
+	{0x00dd, 0x00},	 //  e
+	{TERMINATE, 0}
+};
+
+static const struct initial_reg  travis_other_encoder_parameters_v2[] = {
+	{0x0005, 0x3d},
+	{0x001f, 0x03},	 //  0
+	{0x00ba, 0x00},	 //  1
+	{0x00bb, 0x08},	 //  2
+	{0x00b1, 0x4b},	 //  3
+	{0x0173, 0x69},	 //  4
+	{0x019f, 0x24},	 //  5
+	{0x0019, 0x33},	 //  6
+	{0x0089, 0x39},	 //  7
+	{0x00f8, 0x42},	 //  8
+	{0x00f9, 0x01},	 //  9
+	{0x00fa, 0x23},	 //  a
+	{0x00fb, 0x45},	 //  b
+	{0x00fc, 0x67},	 //  c
+	{0x00fd, 0x89},	 //  d
+	{0x00fe, 0xab},	 //  e
+	{0x001d, 0x25},	 //  f
+	{0x01c3, 0x07},	 // 10
+	{0x01c2, 0x5a},	 // 11
+	{0x01c4, 0x00},	 // 12
+	{0x01c0, 0x07},	 // 13
+	{0x01c1, 0x5a},	 // 14
+	{0x01b1, 0x00},	 // 15
+	{0x01bf, 0x7d},	 // 16
+	{0x01b5, 0x63},	 // 17
+	{0x01cb, 0x80},	 // 18
+	{0x01b3, 0x00},	 // 19
+	{0x01b2, 0x00},	 // 1a
+	{0x009f, 0x10},	 // 1b
+	{0x0183, 0x14},	 // 1c
+	{0x00a7, 0xc2},	 // 1d
+	{0x0171, 0x12},	 // 1e
+	{0x0182, 0x5d},	 // 1f
+	{0x0189, 0x24},	 // 20
+	{0x01be, 0x01},	 // 21
+	{0x008a, 0x53},	 // 22
+	{0x000a, 0x01},	 // 23
+	{0x01d4, 0x10},	 // 24
+	{0x00f3, 0x40},	 // 25
+	{0x00f4, 0x00},	 // 26
+	{0x01b4, 0x00},	 // 27
+	{0x00dc, 0x00},	 // 28
+	{0x00dd, 0x00},	 // 29
+	{0x0191, 0x20},	 // 2a
+	{0x00d1, 0x06},	 // 2b
+	{0x00d6, 0x01},	 // 2c
+	{TERMINATE, 0}
+};
+
+static const struct initial_reg rtd2132_registers[] = {
+	{0x0005, 0x3d},	 //  0
+	{0x001f, 0x03},	 //  1
+	{0x00ba, 0x00},	 //  2
+	{0x00bb, 0x08},	 //  3
+	{0x00b1, 0x4b},	 //  4
+	{0x0173, 0x69},	 //  5
+	{0x019f, 0x24},	 //  6
+	{0x0019, 0x33},	 //  7
+	{0x0089, 0x39},	 //  8
+	{0x00f8, 0x42},	 //  9
+	{0x00f9, 0x01},	 //  a
+	{0x00fa, 0x23},	 //  b
+	{0x00fb, 0x45},	 //  c
+	{0x00fc, 0x67},	 //  d
+	{0x00fd, 0x89},	 //  e
+	{0x00fe, 0xab},	 //  f
+	{0x001d, 0x25},	 // 10
+	{0x01c3, 0x07},	 // 11
+	{0x01c2, 0x5a},	 // 12
+	{0x01c4, 0x00},	 // 13
+	{0x01c0, 0x07},	 // 14
+	{0x01c1, 0x5a},	 // 15
+	{0x01b1, 0x00},	 // 16
+	{0x01bf, 0x7d},	 // 17
+	{0x01b5, 0x63},	 // 18
+	{0x01cb, 0x80},	 // 19
+	{0x01b3, 0x00},	 // 1a
+	{0x01b2, 0x00},	 // 1b
+	{0x009f, 0x10},	 // 1c
+	{0x0183, 0x14},	 // 1d
+	{0x00a7, 0xc2},	 // 1e
+	{0x0171, 0x12},	 // 1f
+	{0x0182, 0x5d},	 // 20
+	{0x0189, 0x28},	 // 21
+	{0x01be, 0x01},	 // 22
+	{0x008a, 0x53},	 // 23
+	{0x000a, 0x01},	 // 24
+	{0x01d4, 0x10},	 // 25
+	{0x00f3, 0x40},	 // 26
+	{0x00f4, 0x00},	 // 27
+	{0x01b4, 0x00},	 // 28
+	{0x00dc, 0x00},	 // 29
+	{0x00dd, 0x00},	 // 2a
+	{0x0191, 0x20},	 // 2b
+	{0x00d1, 0x06},	 // 2c
+	{0x00d6, 0x01},	 // 2d
+	{0x01d2, 0x08},	 // 2e
+	{0x01d3, 0x80},	 // 2f
+	{TERMINATE, 0}
+};
+
+static const struct initial_reg actual_rtd2132_registers[] = {
+	{0x0005, 0x3d},
+	{0x001f, 0x03},
+	{0x00ba, 0x00},
+	{0x00bb, 0x08},
+	{0x00b1, 0x4b},
+	{0x0173, 0x69},
+	{0x019f, 0x24},
+	{0x0019, 0x33},
+	{0x0089, 0x39},
+	{0x00f8, 0x42},
+	{0x00f9, 0x01},
+	{0x00fa, 0x23},
+	{0x00fb, 0x45},
+	{0x00fc, 0x67},
+	{0x00fd, 0x89},
+	{0x00fe, 0xab},
+	{0x001d, 0x25},
+	{0x01c3, 0x07},
+	{0x01c2, 0x5a},
+	{0x01c4, 0x03},
+	{0x01c0, 0x07},
+	{0x01c1, 0x5a},
+	{0x01b1, 0x03},
+	{0x01bf, 0x7d},
+	{0x01b5, 0x63},
+	{0x01cb, 0x80},
+	{0x01b3, 0x66},
+	{0x01b2, 0x9a},
+	{0x009f, 0x00},
+	{0x0183, 0x14},
+	{0x00a7, 0xc2},
+	{0x0171, 0x12},
+	{0x0182, 0x5d},
+	{0x0189, 0x28},
+	{0x01be, 0x01},
+	{0x008a, 0x53},
+	{0x000a, 0x01},
+	{0x01d4, 0x10},
+	{0x00f3, 0x00},
+	{0x00f4, 0x3c},
+	{0x01b4, 0x06},
+	{0x00dc, 0x00},
+	{0x00dd, 0x00},
+	{0x0191, 0x20},
+	{0x00d1, 0x06},
+	{0x00d6, 0x01},
+	{0x01d2, 0x08},
+	{0x01d3, 0x80},
+	{TERMINATE, 0}
+};
