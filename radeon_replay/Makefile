@@ -2,6 +2,7 @@ TARGET=radeon_replay
 all: $(TARGET)
 
 include aruba/Makefile.inc
+include external_encoders/Makefile.inc
 
 SRCS=radeon_replay.c \
 	coreboot_glue.c \
@@ -14,7 +15,7 @@ SRCS=radeon_replay.c \
 
 OBJS = $(sort ${SRCS:.c=.o})
 
-MODULES = aruba
+MODULES = aruba external_encoders
 LIBS=$(sort ${MODULES:%=lib%.a})
 VPATH=$(MODULES)
 
@@ -25,7 +26,7 @@ SCP := scp
 $(TARGET): $(OBJS) $(LIBS)
 	$(CC) $(LIBS) $^ -o $@
 
-clean: clean-aruba
+clean: clean-aruba clean-external_encoders
 	-$(RM) $(OBJS) $(TARGET)
 
 install:
