@@ -13,7 +13,12 @@
 
 #define DRM_DEBUG_KMS(fmt, args...)				\
 	do {							\
-		fprintf(stderr, fmt, ##args);		\
+		fprintf(stderr, fmt"\n", ##args);		\
+	} while (0)
+
+#define DRM_ERROR(fmt, args...)					\
+	do {							\
+		fprintf(stderr, fmt"\n", ##args);		\
 	} while (0)
 
 struct drm_device {
