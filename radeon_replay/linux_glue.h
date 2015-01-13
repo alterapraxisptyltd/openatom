@@ -9,6 +9,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* It may seem stupid to include a coreboot glue layer in the linux glue layer,
+ * but the coreboot layer provides some delay functions which are also used by
+ * linux. We've also modified the linux i2c structures to match the coreboot
+ * definition.
+ */
+#include "coreboot_glue.h"
 #include "radeon_util.h"
 
 #define BIT(x)					(1 << (x))
