@@ -55,17 +55,15 @@ static int do_aux_tran(struct radeon_device *rdev,
 	uint8_t num_bytes_received;
 
 	regptr = channel_id * 0x04 << 2;
-	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0, 0x01 << 16);
-	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0xffff, 0);
+	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0xffff, 0x01 << 16);
 
 	regptr = aux_ch_reg[channel_id] << 2;
 
-	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 20, (hpd_id & 0x7) << 20);
-	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0, 0x0101);
+	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 20,
+				       ((hpd_id & 0x7) << 20) | 0x0101);
 
 	/* Tell controller how many bytes we want to send */
-	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff << 16, send_bytes << 16);
-	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff, 0);
+	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff00ff, send_bytes << 16);
 
 	/* Caller should make sure message is 16 bytes or less */
 	aux_channel_fifo_write_start(rdev, channel_id, *msg++);
