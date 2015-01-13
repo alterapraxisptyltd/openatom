@@ -48,6 +48,7 @@ struct radeon_device {
 };
 
 extern struct radeon_i2c_chan my_i2c;
+extern struct drm_dp_aux my_aux;
 
 static inline
 void aruba_write(struct radeon_device *rdev, uint32_t reg, uint32_t value)

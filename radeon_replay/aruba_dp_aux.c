@@ -147,125 +147,11 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	return ret;
 }
 
-static int radeon_process_aux_ch_spinner(struct radeon_i2c_chan *chan,
-					 uint8_t *send, int send_bytes,
-					 uint8_t *recv, int recv_size,
-					 uint8_t delay, uint8_t *reply)
-{
-	int ret, retry;
-
-	/* Retry seven times, as required by DisplayPort specification */
-	for (retry = 0; retry < 7; retry++) {
-		ret = radeon_process_aux_ch_wrapper(chan, send, send_bytes,
-						    recv, recv_size, delay,
-						    reply);
-		if (ret == -EBUSY)
-			continue;
-		else if (ret < 0)
-			break;
-
-		switch (*reply & DP_AUX_NATIVE_REPLY_MASK) {
-		case DP_AUX_NATIVE_REPLY_ACK:
-			return ret;
-		case DP_AUX_NATIVE_REPLY_DEFER:
-			DRM_DEBUG_KMS("DP sink replied with AUX_DEFER\n");
-			usleep(400);
-			continue;
-		default:
-			return -EIO;
-		}
-	}
-
-	return ret;
-}
-
-static int radeon_dp_aux_native_read(uint8_t bus,
-				     uint16_t address, uint8_t *recv, int recv_bytes, uint8_t delay)
-{
-	uint8_t msg[4], reply;
-	int ret;
-
-	if (recv_bytes == 0)
-		return -EINVAL;
-
-	/* FIXME: We could break up the big transaction into smaller chunks */
-	if (recv_bytes > 16)
-		return -EINVAL;
-
-	/* NOTE: address can be up to 20 bits */
-	msg[0] = DP_AUX_NATIVE_READ << 4;
-	msg[1] = address >> 8;
-	msg[2] = address;
-	msg[3] = recv_bytes - 1;
-
-	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
-					    recv, recv_bytes, delay, &reply);
-
-	return ret;
-}
-
-
-static int radeon_dp_aux_i2c_write(uint8_t bus, uint8_t address, uint8_t reg, uint8_t delay)
-{
-	int ret;
-	uint8_t msg[5], reply;
-
-	msg[0] = (DP_AUX_I2C_WRITE | DP_AUX_I2C_MOT) << 4;
-	msg[1] = 0;
-	msg[2] = address;
-	msg[3] = 0;
-	msg[4] = reg;
-
-	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
-					    NULL, 0, delay, &reply);
-
-	return ret;
-}
-
-static int radeon_dp_aux_i2c_stop(uint8_t bus, uint8_t address, uint8_t delay)
-{
-	int ret;
-	uint8_t msg[3], reply;
-
-	msg[0] = (DP_AUX_I2C_READ) << 4;
-	msg[1] = 0;
-	msg[2] = address;
-
-	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
-					    NULL, 0, delay, &reply);
-
-	return ret;
-}
-
-static int radeon_dp_aux_i2c_read(uint8_t bus, uint16_t address, uint8_t reg,
-				  uint8_t *recv, int recv_bytes, uint8_t delay)
-{
-	int ret;
-	uint8_t msg[4], reply;
-
-	if (recv_bytes == 0)
-		return -EINVAL;
-
-	/* FIXME: We could break up the big transaction into smaller chunks */
-	if (recv_bytes > 16)
-		return -EINVAL;
-
-	msg[0] = (DP_AUX_I2C_READ | DP_AUX_I2C_MOT) << 4;
-	msg[1] = 0;
-	msg[2] = address;
-	msg[3] = recv_bytes - 1;
-
-	ret = radeon_process_aux_ch_spinner(&my_i2c, msg, sizeof(msg),
-					    recv, recv_bytes, delay, &reply);
-
-	return ret;
-}
-
 uint8_t radeon_read_dpcd_reg(uint8_t bus, uint16_t reg)
 {
 	uint8_t val;
 
-	radeon_dp_aux_native_read(bus, reg, &val, 1, 0);
+	drm_dp_dpcd_readb(&my_aux, reg, &val);
 
 	return val;
 }
@@ -275,7 +161,7 @@ int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len)
 	int ret;
 
 	for (; len != 0; len -= min(16, len), dest += 16, start += 16) {
-		ret = radeon_dp_aux_native_read(bus, start, dest, min(16, len), 0);
+		ret = drm_dp_dpcd_read(&my_aux, start, dest, min(16, len));
 		if (ret < 0)
 			return ret;
 		if (ret != min(16, len))
@@ -285,33 +171,85 @@ int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len)
 }
 
 int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
-		    uint8_t *dest, uint8_t start, uint16_t len)
+				   uint8_t *dest, uint8_t start, uint16_t len)
 {
 	int ret;
 
+	struct i2c_seg msgs[2];
+
 	for (; len != 0; len -= min(16, len), dest += 16, start += 16) {
-		ret = radeon_dp_aux_i2c_write(bus, addr, start, 0);
-		if (ret < 0) {
-			DRM_DEBUG_KMS("I²C: address write failed\n");
-			goto force_i2c_stop;
-		}
+		msgs[0].chip = addr;
+		msgs[0].len = 1;
+		msgs[0].buf = &start;
+		msgs[0].read = 0;
 
-		ret = radeon_dp_aux_i2c_read(bus, addr, start, dest, min(16, len), 0);
-		if ((ret < 0) || (ret != min(16, len))) {
-			DRM_DEBUG_KMS("I²C: Got less data than expected\n");
-			ret = -EAGAIN;
-			goto force_i2c_stop;
-		}
+		msgs[1].chip = addr;
+		msgs[1].len = min(16, len);
+		msgs[1].buf = dest;
+		msgs[1].read = 1;
 
-		ret = radeon_dp_aux_i2c_stop(bus, addr, 0);
+		ret = drm_dp_i2c_xfer(&my_aux, msgs, 2);
+
 		if (ret < 0) {
-			DRM_DEBUG_KMS("I²C: Could not stop transaction\n");
-			goto force_i2c_stop;
+			DRM_DEBUG_KMS("I²C: failed to complete transaction\n");
+			return ret;
 		}
 	}
 	return 0;
+}
 
-force_i2c_stop:
-	ret = radeon_dp_aux_i2c_stop(bus, addr, 0);
+
+#define BARE_ADDRESS_SIZE 3
+#define HEADER_SIZE (BARE_ADDRESS_SIZE + 1)
+
+ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
+{
+	struct radeon_i2c_chan *chan = &my_i2c;
+
+	int ret;
+	uint8_t tx_buf[20];
+	size_t tx_size;
+	uint8_t ack, delay = 0;
+
+	if (msg->size > 16)
+		return -E2BIG;
+
+	tx_buf[0] = (msg->request << 4) | ((msg->address >> 16) & 0xf);
+	tx_buf[1] = msg->address >> 8;
+	tx_buf[2] = msg->address & 0xff;
+	tx_buf[3] = msg->size ? (msg->size - 1) : 0;
+
+	switch (msg->request & ~DP_AUX_I2C_MOT) {
+	case DP_AUX_NATIVE_WRITE:
+	case DP_AUX_I2C_WRITE:
+		tx_size = (msg->size) ? (HEADER_SIZE + msg->size) : BARE_ADDRESS_SIZE;
+
+		memcpy(tx_buf + HEADER_SIZE, msg->buffer, msg->size);
+		ret = radeon_process_aux_ch_wrapper(chan,
+					    tx_buf, tx_size, NULL, 0, delay, &ack);
+		if (ret >= 0)
+			/* Return payload size. */
+			ret = msg->size;
+		break;
+	case DP_AUX_NATIVE_READ:
+	case DP_AUX_I2C_READ:
+		tx_size = (msg->size) ? HEADER_SIZE : BARE_ADDRESS_SIZE;
+		ret = radeon_process_aux_ch_wrapper(chan,
+					    tx_buf, tx_size, msg->buffer, msg->size, delay, &ack);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	if (ret >= 0)
+		msg->reply = ack;
+
 	return ret;
 }
+
+struct drm_dp_aux my_aux = {
+	.transfer = aruba_dp_aux_transfer,
+	.i2c_nack_count = 0,
+	.i2c_defer_count = 0,
+};
