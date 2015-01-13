@@ -1,0 +1,191 @@
+/*
+ * Convert drm_dp_helpers in linux from linux-centric to coreboot friendly.
+ *
+ * Note: You want to run the extract_dp_helper.sh script. It's much friendlier,
+ * and does almost everything for you.
+ */
+
+/* We don't use these ever */
+@ remove_bad_funcs @
+identifier func =~ "drm_dp_aux_unregister|drm_dp_aux_register|drm_dp_i2c_functionality";
+@@
+
+- func(...)
+- {
+- ...
+- }
+
+@ remove_export_symbol @
+declarer name EXPORT_SYMBOL;
+@@
+
+- EXPORT_SYMBOL(...);
+
+/* Some functions are found in coreboot headers */
+@ convert_includes_to_coreboot @
+@@
+
+(
+- #include <linux/types.h>
++ #include <stdbool.h>
++ #include <stddef.h>
++ #include <stdint.h>
++ #include <unistd.h>
+|
+- #include <linux/delay.h>
++ #include <delay.h>
+|
+- #include <drm/drm_dp_helper.h>
++ #include "drm_dp_helper.h"
+)
+
+/* The remaining linux includes, we don't give care about */
+@ kill_linux_includes @
+@@
+
+(
+- #include <linux/...>
+|
+- #include <drm/drmP.h>
+)
+
+/* Hey, what do you know! We only use u8. */
+@ convert_to_stdint @
+typedef u8;
+typedef uint8_t;
+typedef uint32_t;
+@@
+
+(
+- u8
++ uint8_t
+|
+/* A character is not an integer!!! God damn programmers */
+- unsigned char
++ uint8_t
+|
+/* How big is a long? Is it 32-bits, is it 64? Fuck that! Use a better type */
+- unsigned long
++ uint32_t
+)
+
+/* We don't use usleep_range() */
+@ usleep_to_delay @
+constant t1, t2;
+@@
+
+- usleep_range(t1, t2);
++ udelay(t1);
+
+@ remove_locks @
+expression lock;
+identifier s, memb;
+@@
+
+(
+- mutex_lock(lock);
+|
+- mutex_unlock(lock);
+|
+- mutex_init(lock);
+|
+struct s {
+...
+- struct mutex memb;
+...
+};
+)
+
+@ remove_superflous_i2c_structs @
+identifier s;
+identifier memb;
+@@
+
+struct s {
+...
+- struct i2c_adapter memb;
+...
+};
+
+/*
+ * This is bad. We might want to change this into the future, but for now,
+ * it allows us to easily integrate this helper into coreboot.
+ */
+@ change_dp_aux_context_type @
+identifier s, dev;
+@@
+
+struct s {
+...
+- struct device *dev;
++ void *parent;
+...
+};
+
+
+@ attribute_packed_fix @
+identifier s;
+//name __packed;
+@@
+
+struct s {
+...
+}
+- __packed
++ __attribute__((packed))
+;
+
+@ remove_bad_structs @
+identifier n;
+@@
+
+- static const struct i2c_algorithm n = {
+- ...
+- };
+
+@ convert_to_coreboot_i2c_struct @
+identifier func, adapter;
+identifier aux;
+@@
+
+func(...,
+- struct i2c_adapter *adapter
++ struct drm_dp_aux *aux
+,...)
+{
+...
+- struct drm_dp_aux *aux = adapter->algo_data;
+...
+}
+
+@ convert_to_coreboot_i2c_msg @
+identifier func, msgs;
+expression i;
+@@
+
+func(...,
+- struct i2c_msg *msgs
++ struct i2c_seg *msgs
+,...)
+{
+<...
+(
+- msgs[i].addr
++ msgs[i].chip
+|
+- msgs[i].flags & I2C_M_RD
++ msgs[i].read
+)
+...>
+}
+
+/* So, this rule doesn't add the prototype. hint: FIXME */
+@ make_i2c_non_static @
+identifier func =~ "drm_dp_i2c_xfer";
+@@
+
+- static
+func(...)
+{
+...
+}
