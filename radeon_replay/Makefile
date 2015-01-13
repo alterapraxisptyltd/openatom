@@ -1,6 +1,7 @@
 SRCS=radeon_replay.c \
 	aruba_dp_aux.c \
 	coreboot_glue.c \
+	drm_dp_helper.c \
 	edid.c \
 	linux_glue.c \
 	radeon_util.c \
