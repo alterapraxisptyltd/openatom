@@ -10,6 +10,8 @@
 #define REG_DP_AUX_FIFO_CTL		(0x1881 << 2)
 #define REG_DP_AUX_CTL2			(0x1883 << 2)
 #define REG_DP_AUX_STATUS		(0x1884 << 2)
+#define  XFER_DONE			BIT(0)
+#define  AUX_ERROR_FLAGS		0x00ff8ff0
 #define REG_DP_AUX_FIFO			(0x1886 << 2)
 #define REG_AUX_PAD_EN_CTL		(0x194c << 2)
 
@@ -90,7 +92,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0, 0x01);
 
 	wait = (delay * 10 + 0x32);
-	while ((aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & 0xff) != 0x01) {
+	while (!(aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & XFER_DONE)) {
 		radeon_udelay(10);
 		if (--wait != 0)
 			continue;
@@ -98,7 +100,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 		return -ETIMEDOUT;
 	}
 
-	if (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) == 0x00ff8ff0)
+	if (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & AUX_ERROR_FLAGS)
 		return -EBUSY;
 
 	aruba_write(rdev, REG_DP_AUX_FIFO + regptr, 0x80000001);
