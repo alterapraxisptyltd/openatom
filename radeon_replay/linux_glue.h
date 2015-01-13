@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 /* It may seem stupid to include a coreboot glue layer in the linux glue layer,
  * but the coreboot layer provides some delay functions which are also used by
