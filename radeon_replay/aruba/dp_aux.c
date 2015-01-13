@@ -236,7 +236,7 @@ int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
 
 static ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
 {
-	struct radeon_i2c_chan *chan = &my_i2c;
+	struct radeon_i2c_chan *chan = aux->parent;
 
 	int ret;
 	uint8_t tx_buf[20];
@@ -284,4 +284,5 @@ struct drm_dp_aux my_aux = {
 	.transfer = aruba_dp_aux_transfer,
 	.i2c_nack_count = 0,
 	.i2c_defer_count = 0,
+	.parent = &my_i2c
 };
