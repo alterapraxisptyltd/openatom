@@ -46,7 +46,7 @@ static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint8_t channel
 
 
 static int do_aux_tran(struct radeon_device *rdev,
-		       uint8_t channel_id, uint8_t delay, uint8_t hpd_id,
+		       uint8_t channel_id, uint8_t hpd_id,
 		       const uint8_t *msg, uint8_t send_bytes,
 		       uint8_t *recv, uint8_t recv_size, uint8_t *reply)
 {
@@ -65,7 +65,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 
 	/* Tell controller how many bytes we want to send */
 	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff << 16, send_bytes << 16);
-	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff, (delay << 4) & 0xff);
+	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff, 0);
 
 	/* Caller should make sure message is 16 bytes or less */
 	aux_channel_fifo_write_start(rdev, channel_id, *msg++);
@@ -75,7 +75,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 	aruba_mask(rdev, REG_DP_AUX_CTL2 + regptr, 0, 0x02);
 	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0, 0x01);
 
-	wait = (delay * 10 + 0x32);
+	wait = 50;
 	while (!(aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & XFER_DONE)) {
 		radeon_udelay(10);
 		if (--wait != 0)
@@ -112,7 +112,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 					 uint8_t *send, int send_bytes,
 					 uint8_t *recv, int recv_size,
-					 uint8_t delay, uint8_t *reply)
+					 uint8_t *reply)
 {
 	struct drm_device *dev = chan->dev;
 	struct radeon_device *rdev = dev->dev_private;
@@ -124,7 +124,7 @@ static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
 	hpd_id = chan->rec.hpd & 0x7;
 	ch_id = chan->rec.i2c_id & 0x7;
 
-	ret = do_aux_tran(rdev, ch_id, delay / 10, hpd_id, send, send_bytes,
+	ret = do_aux_tran(rdev, ch_id, hpd_id, send, send_bytes,
 			  recv, recv_size, reply);
 	/* The hardware gives us a full byte, but we need bits [4:7] */
 	*reply >>= 4;
@@ -209,7 +209,7 @@ ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg
 	int ret;
 	uint8_t tx_buf[20];
 	size_t tx_size;
-	uint8_t ack, delay = 0;
+	uint8_t ack;
 
 	if (msg->size > 16)
 		return -E2BIG;
@@ -226,7 +226,7 @@ ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg
 
 		memcpy(tx_buf + HEADER_SIZE, msg->buffer, msg->size);
 		ret = radeon_process_aux_ch_wrapper(chan,
-					    tx_buf, tx_size, NULL, 0, delay, &ack);
+					    tx_buf, tx_size, NULL, 0, &ack);
 		if (ret >= 0)
 			/* Return payload size. */
 			ret = msg->size;
@@ -235,7 +235,7 @@ ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg
 	case DP_AUX_I2C_READ:
 		tx_size = (msg->size) ? HEADER_SIZE : BARE_ADDRESS_SIZE;
 		ret = radeon_process_aux_ch_wrapper(chan,
-					    tx_buf, tx_size, msg->buffer, msg->size, delay, &ack);
+					    tx_buf, tx_size, msg->buffer, msg->size, &ack);
 		break;
 	default:
 		ret = -EINVAL;
