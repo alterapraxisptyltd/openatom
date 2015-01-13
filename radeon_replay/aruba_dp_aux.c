@@ -1,3 +1,4 @@
+#include "drm_dp_helper.h"
 #include "linux_glue.h"
 #include "radeon_init_native.h"
 
@@ -14,23 +15,6 @@
 #define  AUX_ERROR_FLAGS		0x00ff8ff0
 #define REG_DP_AUX_FIFO			(0x1886 << 2)
 #define REG_AUX_PAD_EN_CTL		(0x194c << 2)
-
-#define DP_AUX_I2C_WRITE		0x0
-#define DP_AUX_I2C_READ			0x1
-#define DP_AUX_I2C_STATUS		0x2
-#define DP_AUX_I2C_MOT			0x4
-#define DP_AUX_NATIVE_WRITE		0x8
-#define DP_AUX_NATIVE_READ		0x9
-
-#define DP_AUX_NATIVE_REPLY_ACK		(0x0 << 0)
-#define DP_AUX_NATIVE_REPLY_NACK	(0x1 << 0)
-#define DP_AUX_NATIVE_REPLY_DEFER	(0x2 << 0)
-#define DP_AUX_NATIVE_REPLY_MASK	(0x3 << 0)
-
-#define DP_AUX_I2C_REPLY_ACK		(0x0 << 2)
-#define DP_AUX_I2C_REPLY_NACK		(0x1 << 2)
-#define DP_AUX_I2C_REPLY_DEFER		(0x2 << 2)
-#define DP_AUX_I2C_REPLY_MASK		(0x3 << 2)
 
 /*
  * This tells us the offset of each AUX control block from the first block.
