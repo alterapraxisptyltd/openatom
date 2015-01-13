@@ -11,6 +11,8 @@
 
 #include "radeon_util.h"
 
+#define BIT(x)					(1 << (x))
+
 #define DRM_DEBUG_KMS(fmt, args...)				\
 	do {							\
 		fprintf(stderr, fmt"\n", ##args);		\
