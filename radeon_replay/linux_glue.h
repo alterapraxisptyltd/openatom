@@ -5,7 +5,9 @@
 #ifndef _LINUX_GLUE_H
 #define _LINUX_GLUE_H
 
+#include <errno.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "radeon_util.h"
 
