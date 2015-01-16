@@ -351,93 +351,22 @@ uint8_t more_compute_mem_eng_pll(uint32_t *clock)
 	return pll_div;
 }
 
-void compute_memory_engine_pll(uint32_t *parb0)
-{
-	uint32_t quot, rem, win;
-	const uint16_t dataman[] = {0x00c8, 0x0640, 0x0008, 0x0019,
-				    0x0640, 0x0c80, 0x0040, 0x0032,
-				    0x0c80, 0x1838, 0x0060, 0x0064};
-	const uint16_t *data;
-	//   0006: 080500ffffff00    AND    param[00]  [XXXX]  <-  00ffffff
-	*parb0 &= 0x00ffffff;
-	//   000d: 661e              SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
-	//   000f: 0304460800        MOVE   WS_FB_WIN [XXXX]  <-  data[0008] [XXXX]
-	win = 0x00057e40;	/* data[0008] is 0x00057e40 on 1035dx */
-	//   0014: 03054038180000    MOVE   WS_QUOT/LOW32 [XXXX]  <-  00001838
-	quot = 0x00001838;
-	//   001b: 3d050000000000    COMP   param[00]  [XXXX]  <-  00000000
-	//   0022: 445d00            JUMP_Equal  005d
-	if (*parb0 == 0)
-		goto l_005d;
-	//   0025: 21054664000000    MUL    WS_FB_WIN [XXXX]  <-  00000064
-	win *= 0x64;
-	//   002c: 2d014000          ADD    WS_QUOT/LOW32 [XXXX]  <-  param[00]  [XXXX]
-	//   0030: 33054001000000    SUB    WS_QUOT/LOW32 [XXXX]  <-  00000001
-	//   0037: 27014000          DIV    WS_QUOT/LOW32 [XXXX]  <-  param[00]  [XXXX]
-	quot = (quot * *parb0) - 1;
-	//   003b: 3e054038180000    COMP   WS_QUOT/LOW32 [XXXX]  <-  00001838
-	//   0042: 454c00            JUMP_Below  004c
-	if (quot > 0x00001838)
-		//   0045: 03054038180000    MOVE   WS_QUOT/LOW32 [XXXX]  <-  00001838
-		quot = 0x00001838;
-	//   004c: 3e0540c8000000    COMP   WS_QUOT/LOW32 [XXXX]  <-  000000c8
-	//   0053: 465d00            JUMP_Above  005d
-	if (quot < 0xc8)
-		quot = 0xc8;
-	//   0056: 030540c8000000    MOVE   WS_QUOT/LOW32 [XXXX]  <-  000000c8
- l_005d:
-	//   005d: 66ff              SET_DATA_BLOCK  ff  (this table)
-	//   005f: 2d0d42bb00        ADD    WS_DATAPTR [..XX]  <-  00bb
-	data = dataman;
-
-	//   0064: 3e0c400200        COMP   WS_QUOT/LOW32 [..XX]  <-  data[0002] [..XX]
-	//   0069: 477400            JUMP_BelowOrEq  0074
-	while (quot > data[1])
-		//   006c: 2d0d420800        ADD    WS_DATAPTR [..XX]  <-  0008
-		data += 4;
-		//   0071: 436400            JUMP   0064
-
-	//   0074: 330c400000        SUB    WS_QUOT/LOW32 [..XX]  <-  data[0000] [..XX]
-	//   0079: 2d0c400600        ADD    WS_QUOT/LOW32 [..XX]  <-  data[0006] [..XX]
-	//   007e: 330d400100        SUB    WS_QUOT/LOW32 [..XX]  <-  0001
-	//   0083: 270c400600        DIV    WS_QUOT/LOW32 [..XX]  <-  data[0006] [..XX]
-	//   0088: 2d0c400400        ADD    WS_QUOT/LOW32 [..XX]  <-  data[0004] [..XX]
-	quot = (quot + data[0] - data[3] - 1) / data[3] + data[2];
-	//   008d: 02e20040          MOVE   param[00]  [X...]  <-  WS_QUOT/LOW32 [...X]
-	*parb0 |= quot << 24;
-	//   0091: 330c400400        SUB    WS_QUOT/LOW32 [..XX]  <-  data[0004] [..XX]
-	//   0096: 210c400600        MUL    WS_QUOT/LOW32 [..XX]  <-  data[0006] [..XX]
-	//   009b: 2d0c400000        ADD    WS_QUOT/LOW32 [..XX]  <-  data[0000] [..XX]
-	quot = ((quot - data[2]) * data[3]) + data[0];
-	//   00a0: 03024140          MOVE   WS_REMIND/HI32 [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	rem = quot;
-	//   00a4: 21054664000000    MUL    WS_FB_WIN [XXXX]  <-  00000064
-	win *= 64;
-	//   00ab: 27024041          DIV    WS_QUOT/LOW32 [XXXX]  <-  WS_REMIND/HI32 [XXXX]
-	quot /= rem;
-	//   00af: 020a0040          MOVE   param[00]  [..XX]  <-  WS_QUOT/LOW32 [..XX]
-	//   00b3: 02b20040          MOVE   param[00]  [.X..]  <-  WS_QUOT/LOW32 [.X..]
-	*parb0 = (*parb0 & ~0x00ffffff) | (quot & 0x00ffffff);
-	//   00b7: 5b                EOT
-	//   00b8: 7a1800c8004006080019004006800c40003200800c381860006400
-	//                           CTB_DS  24 bytes
-}
-
 void set_engine_cock(uint32_t parb1, uint32_t parb0)
 {
+	uint8_t pll;
 	//   0006: 02010100          MOVE   param[01]  [XXXX]  <-  param[00]  [XXXX]
 	parb1 = parb0;
 	//   000a: 02e50102          MOVE   param[01]  [X...]  <-  02
 	parb1 |= (2 << 24);
 	//   000e: 523c              CALL_TABLE  3c  (ComputeMemoryEnginePLL)
-	compute_memory_engine_pll(&parb0);
+	pll = more_compute_mem_eng_pll(&parb0);
 	//   0010: 370000            SET_ATI_PORT  0000  (INDIRECT_IO_MM)
 	//   0013: 4a25810101        TEST   reg[0181]  [...X]  <-  01
 	//   0018: 441300            JUMP_Equal  0013
 	while(!!!!!!!!!!!!!!!!!!!!!((radeon_reg_read(0x0181) & 0xff) == 0x01))
 		break /* Pretty please FIXME. I'll suck your dick */;
 	//   001b: 0139800101        MOVE   reg[0180]  [...X]  <-  param[01]  [X...]
-	radeon_reg_mask(0x0180, 0xff, parb1 >> 24);
+	radeon_reg_mask(0x0180, 0xff, pll);
 	//   0020: 4a25810101        TEST   reg[0181]  [...X]  <-  01
 	//   0025: 442000            JUMP_Equal  0020
 	while((radeon_reg_read(0x0181) & 0xff) == 0x01)
