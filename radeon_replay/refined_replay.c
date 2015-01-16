@@ -309,43 +309,43 @@ typedef struct _COMPUTE_MEMORY_ENGINE_PLL_PARAMETERS_V4
 	uint32_t  ucPostDiv:8;        //return parameter: post divider which is used to program to register directly
 }COMPUTE_MEMORY_ENGINE_PLL_PARAMETERS_V4;
 
-#define dentist_freq 3600
-#define DIV_UP(x, y)	(((x) + (y) - 1) / (y))
-uint8_t more_compute_mem_eng_pll(uint32_t *clock)
+static uint8_t divider_to_pll_map(uint8_t *divx)
 {
-	uint8_t pll_div;
-	uint32_t  div;
-	struct pulapar {
-		uint16_t div_min;
-		uint16_t div_max;
-		uint16_t val_start;
-		uint16_t gran;
-// 	} pllpar[3] = { {0x00c8, 0x0640, 0x0008, 0x0019},
-// 			{0x0640, 0x0c80, 0x0040, 0x0032},
-// 			{0x0c80, 0x1838, 0x0060, 0x0064} };
-	} pllpar[3] = { { 2, 16,  8,  25},
-			{16, 32, 64,  50},
-			{32, 62, 96, 100} };
-	struct pulapar *data;
+	uint8_t div;
+	static const struct pll_region {
+		uint8_t div_min;
+		uint8_t div_max;
+		uint8_t reg_val_start;
+		uint8_t reg_step;
+	} pll_regions[3] = { {  2, 16,  8, 4 },
+			     { 16, 32, 64, 2 },
+			     { 32, 62, 96, 1 } };
+	const struct pll_region *data = pll_regions;
 
-	div = pllpar[2].div_max;;
-
-	if (*clock != 0) {
-		div = DIV_UP(dentist_freq * 100, *clock);
-		div = min(div, pllpar[2].div_max);
-		div = max(div, pllpar[0].div_min);
-	}
-
-	data = pllpar;
+	div = *divx;
+	div = min(div, pll_regions[2].div_max);
+	div = max(div, pll_regions[0].div_min);
 
 	while (div > data->div_max) {
 		data++;
 	}
 
-	div = DIV_UP(div - data->div_min, data->gran) + data->val_start;
-	pll_div = div & 0xff;
+	div = (div - data->div_min) * data->reg_step + data->reg_val_start;
+	*divx = (div - data->reg_val_start) / data->reg_step + data->div_min;
+	return div;
+}
 
-	div = (div - data->val_start) * data->gran + data->div_min;
+#define dentist_freq 3600
+#define DIV_UP(x, y)	(((x) + (y) - 1) / (y))
+
+uint8_t more_compute_mem_eng_pll(uint32_t *clock)
+{
+	uint8_t pll_div, div = 0xff;
+
+	if (*clock != 0)
+		div = DIV_UP(dentist_freq * 100, *clock);
+
+	pll_div = divider_to_pll_map(&div);
 
 	*clock = (dentist_freq * 100) / div;
 	return pll_div;
