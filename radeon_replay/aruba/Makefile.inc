@@ -1,6 +1,7 @@
 #!/bin/make
 
 ARUBA_SRCS= \
+	crtc.c \
 	dp_aux.c \
 	encoder.c \
 	transmitter.c
