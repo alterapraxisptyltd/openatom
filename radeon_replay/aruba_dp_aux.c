@@ -75,7 +75,7 @@ static int do_aux_tran(struct radeon_device *rdev,
 
 	wait = 50;
 	while (!(aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & XFER_DONE)) {
-		radeon_udelay(10);
+		usleep(10);
 		if (--wait != 0)
 			continue;
 		/* Timed out */
