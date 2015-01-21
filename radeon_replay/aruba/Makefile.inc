@@ -4,7 +4,8 @@ ARUBA_SRCS= \
 	crtc.c \
 	dp_aux.c \
 	init_misc.c \
-	misc.c
+	misc.c \
+	pll.c
 
 ARUBA_OBJS = $(sort ${ARUBA_SRCS:.c=.o})
 

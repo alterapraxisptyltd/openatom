@@ -6,6 +6,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+enum pll_ids {
+	PPLL_1 = 0,
+	PPLL_2 = 1,
+	PPLL_0 = 2,
+	DCPLL = PPLL_0,
+};
+
+struct pll_settings {
+	uint32_t fb_div_frac;
+	uint16_t fb_div_int;
+	uint8_t ref_div;
+	uint8_t post_div;
+};
+
 /* crtc.c */
 int aruba_enable_crtc(struct radeon_device *rdev, uint8_t crtc_id, bool enable);
 int aruba_update_crtc_x2_buf(struct radeon_device *rdev,
@@ -30,5 +44,19 @@ void aruba_powergate_crtc(struct radeon_device *rdev, uint8_t crtc_id,
 			  bool enable);
 void aruba_scaler_setup(struct radeon_device *rdev, uint8_t crtc_id,
 			enum radeon_rmx_type rmx_type);
+
+/* pll.c */
+uint8_t aruba_compute_engine_pll(uint32_t vco_freq_mhz, uint32_t *clock_khz);
+void aruba_disable_pll_ss(struct radeon_device *rdev, uint8_t pll_id);
+void aruba_enable_pll_ss(struct radeon_device *rdev, uint8_t pll_id,
+			 uint16_t step, uint16_t ds_frac, uint8_t fbdiv,
+			 uint8_t nfrac, bool downspread);
+void aruba_set_pixel_clock(struct radeon_device *rdev, enum pll_ids pll_id,
+			   struct pll_settings *pll_divs, uint8_t crtc_id,
+			   uint32_t px_clk, uint32_t fags, uint8_t encoder_mode);
+void aruba_init_pixel_pll(struct radeon_device * rdev, uint8_t pll_id);
+int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t vco_freq_mhz,
+			   uint32_t clock_khz, uint32_t default_clock_khz,
+			   uint16_t pcie_ss_percent);
 
 #endif	/* __ARUBA_H */
