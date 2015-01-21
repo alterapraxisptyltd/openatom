@@ -83,11 +83,25 @@ sed -r "s/aux_write\(0x06, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_w
 sed -r "s/aux_write\(0x05, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x04, \1, \2/g" |
 sed -r "s/aux_write\(0x04, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x03, \1, \2/g" |
 
+# The fifo_write after an aux_read is the read size argument
+sed -r "s/aux_read\(0x04, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_read\(\1, \2/g" |
+# Concatenate received data onto one line
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x07\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x06);\1\2/g" |
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x06\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x05);\1\2/g" |
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x05\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x04);\1\2/g" |
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x04\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x03);\1\2/g" |
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x03\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x02);\1\2/g" |
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x02\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x01);\1\2/g" |
+sed -r "/aux_read\(0x[$hex]{4}, /s/0x01\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/0x00);\1\2/g" |
+# Concatenate the last byte and kill the size argument for aux reads, and
+sed -r "/aux_read\(0x[$hex]{4}/s/, 0x00\);([^\r]*)\r\tfifo_read\(\); ([^\r]*)/); \1\2/g" |
+
 tr '\r' '\n' |
 
 # Now kill the size argument
 sed -r "/aux_write\(/s/0x03, //g" |
 # And the size byte
 sed -r "/aux_write\(/s/(0x[$hex]{4}), 0x[$hex]{2}/\1/g" |
-# Remaining FIFO writes are just for alignment. Kill them
-sed -r "/fifo_write\(/d"
+
+# Remaining FIFO accesses are just for alignment. Kill them
+sed -r "/fifo_(read|write)\(/d"
