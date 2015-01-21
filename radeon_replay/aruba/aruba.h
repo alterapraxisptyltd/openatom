@@ -6,6 +6,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* crtc.c */
+int aruba_enable_crtc(struct radeon_device *rdev, uint8_t crtc_id, bool enable);
+int aruba_update_crtc_x2_buf(struct radeon_device *rdev,
+			     uint8_t crtc_id, bool enable);
+int aruba_blank_crtc(struct radeon_device *rdev, uint8_t crtc_id, bool enable);
+void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
+			       struct drm_display_mode *mode);
+void aruba_overscan_setup(struct radeon_device *rdev, uint8_t crtc_id,
+			  uint8_t h_border, uint8_t v_border);
+
 /* dp_aux.c */
 int radeon_read_dpcd(uint8_t bus, uint8_t *dest, uint16_t start, uint16_t len);
 int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
