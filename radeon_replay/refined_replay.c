@@ -57,18 +57,18 @@ static void dcg7(void)
 	radeon_write_sync(0x5df0, 0x100010ff);
 }
 
-static uint16_t asic_static_power_bullshit_v2(uint8_t huge, uint8_t tits)
+uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits)
 {
 	/*
 	 * big = par[0] >> 6
 	 * small = par[0] & 0x7
 	 */
-	static const uint16_t data[3][6] = {
+	static const uint16_t really[3][6] = {
 		{ 0x0000, 0x0300, 0x2600, 0x2900, 0x2c00, 0x2f00 },  /* 0x00 */
 		{ 0x0000, 0x0002, 0x002c, 0x002d, 0x002e, 0x002f },  /* 0x40 */
 		{ 0x0000, 0x0001, 0x0007, 0x0008, 0x000b, 0x000c }}; /* 0x80 */
 
-	return data[huge][tits];
+	return really[huge][tits];
 }
 
 static uint16_t asic_static_power_bullshit(uint8_t par)
@@ -303,63 +303,16 @@ void memory_controller_init(void)
 	//   0031: 5b                EOT
 }
 
-typedef struct _COMPUTE_MEMORY_ENGINE_PLL_PARAMETERS_V4
-{
-	uint32_t  ulClock:24;         //Input= target clock, output = actual clock
-	uint32_t  ucPostDiv:8;        //return parameter: post divider which is used to program to register directly
-}COMPUTE_MEMORY_ENGINE_PLL_PARAMETERS_V4;
-
-static uint8_t divider_to_pll_map(uint8_t *divx)
-{
-	uint8_t div;
-	static const struct pll_region {
-		uint8_t div_min;
-		uint8_t div_max;
-		uint8_t reg_val_start;
-		uint8_t reg_step;
-	} pll_regions[3] = { {  2, 16,  8, 4 },
-			     { 16, 32, 64, 2 },
-			     { 32, 62, 96, 1 } };
-	const struct pll_region *data = pll_regions;
-
-	div = *divx;
-	div = min(div, pll_regions[2].div_max);
-	div = max(div, pll_regions[0].div_min);
-
-	while (div > data->div_max) {
-		data++;
-	}
-
-	div = (div - data->div_min) * data->reg_step + data->reg_val_start;
-	*divx = (div - data->reg_val_start) / data->reg_step + data->div_min;
-	return div;
-}
-
-#define dentist_freq 3600
-#define DIV_UP(x, y)	(((x) + (y) - 1) / (y))
-
-uint8_t more_compute_mem_eng_pll(uint32_t *clock)
-{
-	uint8_t pll_div, div = 0xff;
-
-	if (*clock != 0)
-		div = DIV_UP(dentist_freq * 100, *clock);
-
-	pll_div = divider_to_pll_map(&div);
-
-	*clock = (dentist_freq * 100) / div;
-	return pll_div;
-}
-
 void set_engine_cock(uint32_t parb1, uint32_t parb0)
 {
 	uint8_t pll;
 	//   0006: 02010100          MOVE   param[01]  [XXXX]  <-  param[00]  [XXXX]
-	parb1 = parb0;
+	parb1 = parb0 * 10;
 	//   000a: 02e50102          MOVE   param[01]  [X...]  <-  02
 	parb1 |= (2 << 24);
 	//   000e: 523c              CALL_TABLE  3c  (ComputeMemoryEnginePLL)
-	pll = more_compute_mem_eng_pll(&parb0);
+	pll = aruba_compute_engine_pll(&parb0);
+	parb0 /= 10;
 	//   0010: 370000            SET_ATI_PORT  0000  (INDIRECT_IO_MM)
 	//   0013: 4a25810101        TEST   reg[0181]  [...X]  <-  01
 	//   0018: 441300            JUMP_Equal  0013
@@ -398,4 +351,5 @@ void asic_init(void)
 
 	fprintf(stderr, "====== End of refined replay ======\n");
 }
+
 
