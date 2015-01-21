@@ -71,4 +71,23 @@ sed -r "/radeon_write\($fifo_ctl/d" |
 
 # Remove the following line if you need to see status reads
 sed -r "/get_status\(/d" |
-sed -r "/get_reply[^$hex]*00/d"
+sed -r "/get_reply[^$hex]*00/d" |
+
+# Back to more complicated business
+tr '\n' '\r' |
+
+# Concatenate AUX writes into one line
+sed -r "s/aux_write\(0x08, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x07, \1, \2/g" |
+sed -r "s/aux_write\(0x07, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x06, \1, \2/g" |
+sed -r "s/aux_write\(0x06, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x05, \1, \2/g" |
+sed -r "s/aux_write\(0x05, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x04, \1, \2/g" |
+sed -r "s/aux_write\(0x04, ([$hex, x]*)[^\r]*\r\tfifo_write\((0x[$hex]{2})/aux_write\(0x03, \1, \2/g" |
+
+tr '\r' '\n' |
+
+# Now kill the size argument
+sed -r "/aux_write\(/s/0x03, //g" |
+# And the size byte
+sed -r "/aux_write\(/s/(0x[$hex]{4}), 0x[$hex]{2}/\1/g" |
+# Remaining FIFO writes are just for alignment. Kill them
+sed -r "/fifo_write\(/d"
