@@ -45,7 +45,7 @@ static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint8_t channel
 }
 
 
-static int do_aux_tran(struct radeon_device *rdev,
+static ssize_t do_aux_tran(struct radeon_device *rdev,
 		       uint8_t channel_id, uint8_t hpd_id,
 		       const uint8_t *msg, uint8_t send_bytes,
 		       uint8_t *recv, uint8_t recv_size, uint8_t *reply)
@@ -107,10 +107,10 @@ static int do_aux_tran(struct radeon_device *rdev,
 	return num_bytes_received;
 }
 
-static int radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
-					 uint8_t *send, int send_bytes,
-					 uint8_t *recv, int recv_size,
-					 uint8_t *reply)
+static ssize_t radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
+					     uint8_t *send, int send_bytes,
+					     uint8_t *recv, int recv_size,
+					     uint8_t *reply)
 {
 	struct drm_device *dev = chan->dev;
 	struct radeon_device *rdev = dev->dev_private;
@@ -200,7 +200,7 @@ int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
 #define BARE_ADDRESS_SIZE 3
 #define HEADER_SIZE (BARE_ADDRESS_SIZE + 1)
 
-ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
+static ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
 {
 	struct radeon_i2c_chan *chan = &my_i2c;
 
