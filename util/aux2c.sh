@@ -42,8 +42,10 @@ sed -r "s/radeon_read\($status/get_status\(/g" |
 
 tr '\n' '\r' |
 
+# Kill succesive writes to FIFO ctl. Only the last one is important
+sed -r "s/radeon_write\($fifo_ctl, 0x[$hex]{8}\);\r\t(radeon_write\($fifo_ctl, 0x[$hex]{8}\))/\1/g" |
 # Now extract the transaction size on succesive writes to to FIFO control
-sed -r "s/radeon_write\($fifo_ctl, 0x[$hex]{8}\);\r\tradeon_write\($fifo_ctl, 0x[$hex]{2}([$hex]{2})[$hex]{4}/tx_size\(0x\1/g" |
+sed -r "s/radeon_write\($fifo_ctl, 0x[$hex]{2}([$hex]{2})[$hex]{3}[^1]/tx_size\(0x\1/g" |
 # Extract address from subsequent FIFO writes
 sed -r "/fifo_start\(/s/0x([$hex])\);\r\tfifo_write\(0x([$hex]{2})\);\r\tfifo_write\(0x([$hex]{2})/0x\1, 0x\2\3/g" |
 # Include the tx size in the argument list of fifo_start
