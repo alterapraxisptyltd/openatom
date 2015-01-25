@@ -22,5 +22,6 @@ void radeon_reg_write(uint32_t reg_addr, uint32_t value);
 void radeon_reg_mask(uint32_t reg, uint32_t clrbits, uint32_t setbits);
 
 void run_radeon_tests(void);
+void radeon_init_mmio(void);
 
 #endif /* RADEON_UTIL */

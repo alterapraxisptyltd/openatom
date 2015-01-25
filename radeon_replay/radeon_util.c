@@ -3,9 +3,18 @@
 #include <sys/io.h>
 #include <unistd.h>
 
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/mman.h>
+
+
 #include "radeon_util.h"
 #include "vga_io.h"
 
+typedef uint32_t radeon_read_op_t(uint32_t reg_addr);
+typedef void radeon_write_op_t(uint32_t reg_addr, uint32_t value);
+typedef void sync_read_op_t(void);
 
 static bool radeon_iotrace = false;
 
@@ -48,29 +57,75 @@ static void sync_read_op(void)
 	inl(0x204c);
 }
 
-static uint32_t radeon_read_op(uint32_t reg_addr)
+static uint32_t radeon_read_op_pio(uint32_t reg_addr)
 {
 	outl(reg_addr, 0x2000);
 	return inl(0x2004);
 }
 
-static void radeon_write_op(uint32_t reg_addr, uint32_t value)
+static void radeon_write_op_pio(uint32_t reg_addr, uint32_t value)
 {
 	outl(reg_addr, 0x2000);
 	outl(value, 0x2004);
+}
+
+static void *mmio_base = NULL;
+static void sync_read_nop(void)
+{
+}
+
+static uint32_t radeon_read_op_mmio(uint32_t reg_addr)
+{
+	volatile uint32_t *base = (void *)((uintptr_t)mmio_base + reg_addr);
+	return *base;
+}
+
+static void radeon_write_op_mmio(uint32_t reg_addr, uint32_t value)
+{
+	volatile uint32_t *base = (void *)((uintptr_t)mmio_base + reg_addr);
+	*base = value;
+}
+
+radeon_read_op_t *master_read_op = radeon_read_op_pio;
+radeon_write_op_t *master_write_op = radeon_write_op_pio;
+sync_read_op_t *master_sync_op = sync_read_op;
+
+void radeon_init_mmio(void)
+{
+	int fd;
+
+	fd = open("/dev/mem", O_RDWR | O_SYNC);
+
+	if (fd == -1) {
+		fprintf(stderr, "No /dev/mem ? %s\n", strerror(errno));
+		return;
+	}
+
+	mmio_base = mmap(0, 0x40000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0xf0380000);
+	if (mmio_base == MAP_FAILED) {
+		mmio_base = NULL;
+		fprintf(stderr, "mmap() failed %s\n", strerror(errno));
+		return;
+	}
+
+	fprintf(stderr, "pointing to %p\n", mmio_base);
+
+	master_read_op = radeon_read_op_mmio;
+	master_write_op = radeon_write_op_mmio;
+	master_sync_op = sync_read_nop;
 }
 
 void sync_read(void)
 {
 	if (radeon_iotrace)
 		fprintf(stderr, "\t%s();\n", __func__);
-	sync_read_op();
+	master_sync_op();
 }
 
 uint32_t radeon_read(uint32_t reg_addr)
 {
 	uint32_t reg32;
-	reg32 = radeon_read_op(reg_addr);
+	reg32 = master_read_op(reg_addr);
 	if (radeon_iotrace)
 		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
 	return reg32;
@@ -80,14 +135,14 @@ void radeon_write(uint32_t reg_addr, uint32_t value)
 {
 	if (radeon_iotrace)
 		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
-	radeon_write_op(reg_addr, value);
+	master_write_op(reg_addr, value);
 }
 
 uint32_t radeon_read_sync(uint32_t reg_addr)
 {
 	uint32_t reg32;
-	sync_read_op();
-	reg32 = radeon_read_op(reg_addr);
+	master_sync_op();
+	reg32 = master_read_op(reg_addr);
 	if (radeon_iotrace)
 		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
 	return reg32;
@@ -97,16 +152,16 @@ void radeon_write_sync(uint32_t reg_addr, uint32_t value)
 {
 	if (radeon_iotrace)
 		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
-	sync_read_op();
-	radeon_write_op(reg_addr, value);
+	master_sync_op();
+	master_write_op(reg_addr, value);
 }
 
 void radeon_delay(uint32_t internal_timer)
 {
 	if (radeon_iotrace)
 		fprintf(stderr, "\t%s(0x%08x);\n", __func__, internal_timer);
-	sync_read_op();
-	radeon_write_op(0x3f50, 0x0);
+	master_sync_op();
+	master_write_op(0x3f50, 0x0);
 	/* Based on a 50MHz internal_timer. YMMV */
 	udelay(internal_timer / 50);
 }
