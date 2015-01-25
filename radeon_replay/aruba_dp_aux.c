@@ -6,42 +6,47 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#define AUX_BASE			0x6200
 /* NOTE: These names are based on what _we_think_ these registers do */
-#define REG_DP_AUX_CTL			(0x1880 << 2)
-#define REG_DP_AUX_FIFO_CTL		(0x1881 << 2)
-#define REG_DP_AUX_CTL2			(0x1883 << 2)
-#define REG_DP_AUX_STATUS		(0x1884 << 2)
+#define DP_AUX_CTL			0x00
+#define  HPD_MASK			(7 << 20)
+#define  HPD(hpd_id)			(((hpd_id) << 20) & HPD_MASK)
+#define DP_AUX_FIFO_CTL			0x04
+#define DP_AUX_CTL2			0x0c
+#define DP_AUX_STATUS			0x10
 #define  XFER_DONE			BIT(0)
 #define  AUX_ERROR_FLAGS		0x00ff8ff0
-#define REG_DP_AUX_FIFO			(0x1886 << 2)
-#define REG_AUX_PAD_EN_CTL		(0x194c << 2)
+#define DP_AUX_FIFO			0x18
+
+/* The following registers are offset a little differently */
+#define REG_AUX_PAD_EN_CTL		0x6530
 
 /*
  * This tells us the offset of each AUX control block from the first block.
  * It is given in number of 32-bit registers, so it needs to be multiplied by
  * 4 before converting it to an address offset.
  */
-static const uint16_t aux_ch_reg[] = {0, 0x14, 0x28, 0x40, 0x54, 0x68};
-
-static void aux_channel_fifo_write_start(struct radeon_device *rdev, uint8_t channel, uint8_t data)
+static uint32_t get_aux_block(uint8_t chan_id)
 {
-	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (aux_ch_reg[channel] << 2);
-	aruba_write(rdev, reg, (data << 8) | (1 << 31));
+	static const uint16_t aux_offs[] = {0, 0x50, 0xa0, 0x100, 0x150, 0x1a0};
+	return AUX_BASE + aux_offs[chan_id];
 }
 
-static void aux_channel_fifo_write(struct radeon_device *rdev, uint8_t channel, uint8_t data)
+static void aux_channel_fifo_write_start(struct radeon_device *rdev,
+					 uint32_t block, uint8_t data)
 {
-	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (aux_ch_reg[channel] << 2);
-	aruba_write(rdev, reg, data << 8);
+	aruba_write(rdev, block + DP_AUX_FIFO, (data << 8) | BIT(31));
 }
 
-static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint8_t channel)
+static void aux_channel_fifo_write(struct radeon_device *rdev, uint32_t block,
+				   uint8_t data)
 {
-	uint32_t reg;
-	reg = REG_DP_AUX_FIFO + (aux_ch_reg[channel] << 2);
-	return (aruba_read(rdev, reg) >> 8) & 0xff;
+	aruba_write(rdev, block + DP_AUX_FIFO, data << 8);
+}
+
+static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint32_t block)
+{
+	return (aruba_read(rdev, block + DP_AUX_FIFO) >> 8) & 0xff;
 }
 
 
@@ -50,31 +55,28 @@ static ssize_t do_aux_tran(struct radeon_device *rdev,
 		       const uint8_t *msg, uint8_t send_bytes,
 		       uint8_t *recv, uint8_t recv_size, uint8_t *reply)
 {
-	int i, wait;
-	uint32_t regptr;
-	uint8_t num_bytes_received;
+	size_t i, wait, num_bytes_rcvd;
+	uint32_t block;
 
-	regptr = channel_id * 0x04 << 2;
-	aruba_mask(rdev, REG_AUX_PAD_EN_CTL + regptr, 0xffff, 0x01 << 16);
+	block = channel_id * 0x04 << 2;
+	aruba_mask(rdev, block + REG_AUX_PAD_EN_CTL, 0xffff, 0x01 << 16);
 
-	regptr = aux_ch_reg[channel_id] << 2;
-
-	aruba_mask(rdev, REG_DP_AUX_CTL + regptr, 0x7 << 20,
-				       ((hpd_id & 0x7) << 20) | 0x0101);
+	block = get_aux_block(channel_id);
+	aruba_mask(rdev, block + DP_AUX_CTL, HPD_MASK, HPD(hpd_id) | 0x0101);
 
 	/* Tell controller how many bytes we want to send */
-	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0xff00ff, send_bytes << 16);
+	aruba_mask(rdev, block + DP_AUX_FIFO_CTL, 0xff00ff, send_bytes << 16);
 
 	/* Caller should make sure message is 16 bytes or less */
-	aux_channel_fifo_write_start(rdev, channel_id, *msg++);
+	aux_channel_fifo_write_start(rdev, block, *msg++);
 	while (--send_bytes)
-		aux_channel_fifo_write(rdev, channel_id, *msg++);
+		aux_channel_fifo_write(rdev, block, *msg++);
 
-	aruba_mask(rdev, REG_DP_AUX_CTL2 + regptr, 0, 0x02);
-	aruba_mask(rdev, REG_DP_AUX_FIFO_CTL + regptr, 0, 0x01);
+	aruba_mask(rdev, block + DP_AUX_CTL2, 0, BIT(1));
+	aruba_mask(rdev, block + DP_AUX_FIFO_CTL, 0, BIT(0));
 
 	wait = 50;
-	while (!(aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & XFER_DONE)) {
+	while (!(aruba_read(rdev, block + DP_AUX_STATUS) & XFER_DONE)) {
 		usleep(10);
 		if (--wait != 0)
 			continue;
@@ -82,29 +84,29 @@ static ssize_t do_aux_tran(struct radeon_device *rdev,
 		return -ETIMEDOUT;
 	}
 
-	if (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) & AUX_ERROR_FLAGS)
+	if (aruba_read(rdev, block + DP_AUX_STATUS) & AUX_ERROR_FLAGS)
 		return -EBUSY;
 
-	aruba_write(rdev, REG_DP_AUX_FIFO + regptr, 0x80000001);
+	aruba_write(rdev, block + DP_AUX_FIFO, 0x80000001);
 
-	*reply = aux_channel_fifo_read(rdev, channel_id);
-	num_bytes_received = (aruba_read(rdev, REG_DP_AUX_STATUS + regptr) >> 24) & 0x1f;
+	*reply = aux_channel_fifo_read(rdev, block);
+	num_bytes_rcvd = (aruba_read(rdev, block + DP_AUX_STATUS) >> 24) & 0x1f;
 
-	if (num_bytes_received == 0)
+	if (num_bytes_rcvd == 0)
 		return -EIO;
 
 	/* First byte is the reply field. The others are the data bytes */
-	if (--num_bytes_received == 0)
-		return num_bytes_received;
+	if (--num_bytes_rcvd == 0)
+		return num_bytes_rcvd;
 
-	for (i = 0; i < min(num_bytes_received, recv_size); i++)
-		recv[i] = aux_channel_fifo_read(rdev, channel_id);
+	for (i = 0; i < min(num_bytes_rcvd, recv_size); i++)
+		recv[i] = aux_channel_fifo_read(rdev, block);
 
 	/* This extra data is lost forever. TODO: Signal an error? */
-	for (; i < num_bytes_received; i++)
-		aux_channel_fifo_read(rdev, channel_id);
+	for (; i < num_bytes_rcvd; i++)
+		aux_channel_fifo_read(rdev, block);
 
-	return num_bytes_received;
+	return num_bytes_rcvd;
 }
 
 static ssize_t radeon_process_aux_ch_wrapper(struct radeon_i2c_chan *chan,
