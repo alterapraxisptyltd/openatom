@@ -16,7 +16,9 @@ SRCS=radeon_replay.c \
 	radeon_util.c \
 	refined_replay.c \
 	vga_io.c \
-	vga_simply_fy.c
+	vga_simply_fy.c \
+	aruba_coreboot_only.c \
+	aruba_coreboot_asic_init.c
 
 OBJS = $(sort ${SRCS:.c=.o})
 
