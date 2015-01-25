@@ -6,6 +6,9 @@
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
 
+void radeon_enable_iotracing(void);
+void radeon_disable_iotracing(void);
+
 void sync_read(void);
 uint32_t radeon_read(uint32_t reg_addr);
 void radeon_write(uint32_t reg_addr, uint32_t value);
