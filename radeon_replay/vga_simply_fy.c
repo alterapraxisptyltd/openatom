@@ -6,7 +6,7 @@
 void run_replay(uint8_t goto_skippie)
 {
 	if (goto_skippie)
-		goto skippie;
+		goto end_of_asic_init;
 	sync_read();
 	inl(0x2000); /* 9ffffffc */
 	sync_read();
@@ -299,7 +299,7 @@ void run_replay(uint8_t goto_skippie)
 	radeon_read_sync(0x0604); /* 00000009 */
 	radeon_read_sync(0x1724); /* 00000000 */
 	radeon_write_sync(0x1724, 0x00040000);
- skippie:
+ end_of_asic_init:
 	radeon_read_sync(0x5428); /* 00000200 */
 	radeon_read_sync(0x1734); /* 00000000 */
 	radeon_read_sync(0x1738); /* 00000000 */
@@ -1451,32 +1451,6 @@ void run_replay(uint8_t goto_skippie)
 	radeon_read_sync(0x6210); /* 01000001 */
 	radeon_read_sync(0x1724); /* 00000000 */
 	radeon_write_sync(0x1724, 0x00040000);
-	radeon_write(0x9fffa580, 0x00000206);
-	radeon_write(0x9fffa568, 0x00001dce);
-	radeon_write(0x9fffa568, 0x05561dce);
-	radeon_write(0x9fffa56c, 0x000000c0);
-	radeon_write(0x9fffa56c, 0x030000c0);
-	radeon_write(0x9fffa570, 0x00000030);
-	radeon_write(0x9fffa574, 0x0000000a);
-	radeon_write(0x9fffa570, 0x00080030);
-	radeon_write(0x9fffa574, 0x0003000a);
-	radeon_write(0x9fffa578, 0x00000001);
-	radeon_write(0x9fffa578, 0x01580001);
-	radeon_write(0x9fffa57c, 0x000000c1);
-	radeon_write(0x9fffa57c, 0x000000c1);
-	radeon_write(0x9fffa59c, 0x00000206);
-	radeon_write(0x9fffa584, 0x000013df);
-	radeon_write(0x9fffa584, 0x055613df);
-	radeon_write(0x9fffa588, 0x000000c0);
-	radeon_write(0x9fffa588, 0x030000c0);
-	radeon_write(0x9fffa58c, 0x00000030);
-	radeon_write(0x9fffa590, 0x0000000a);
-	radeon_write(0x9fffa58c, 0x00080030);
-	radeon_write(0x9fffa590, 0x0003000a);
-	radeon_write(0x9fffa594, 0x00000001);
-	radeon_write(0x9fffa594, 0x01580001);
-	radeon_write(0x9fffa598, 0x000000c1);
-	radeon_write(0x9fffa598, 0x000000c1);
 	radeon_read_sync(0x172c); /* 00000000 */
 	radeon_write_sync(0x172c, 0x0000ff00);
 	radeon_read_sync(0x172c); /* 0000ff00 */
@@ -6835,8 +6809,6 @@ void replay_int10_c2(void)
 	radeon_read_sync(0x4054); /* 00000000 */
 	radeon_read_sync(0x4010); /* e0000008 */
 	radeon_read_sync(0x4010); /* e0000008 */
-	radeon_write(0x9fff9c94, 0x19640000);
-	radeon_write(0x9fff9c94, 0x19640019);
 	radeon_read_sync(0x1738); /* 00000000 */
 	radeon_read_sync(0x1724); /* 00040000 */
 	radeon_read_sync(0x1724); /* 00040000 */
@@ -6852,8 +6824,6 @@ void replay_int10_c3(void)
 	sync_read();
 	inl(0x2000); /* 9ffffffc */
 	radeon_read_sync(0x4054); /* 00000000 */
-	radeon_write(0x9fff9c34, 0x19640000);
-	radeon_write(0x9fff9c34, 0x19640019);
 	radeon_read_sync(0x173c); /* 00001000 */
 	radeon_read_sync(0x1724); /* 00040000 */
 	radeon_read_sync(0x173c); /* 00001000 */
