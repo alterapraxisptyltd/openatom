@@ -8,6 +8,7 @@
 
 #include "edid.h"
 #include "radeon_init_native.h"
+#include "radeon_util.h"
 #include "replay.h"
 
 struct global_cfg {
@@ -34,9 +35,10 @@ static void print_help(void)
 	printf("radeon_replay [ACTIONS]\n\n");
 	printf("  -h, --help   Print this message and exit\n");
 	printf("  -r, --replay Replay a VGA init (source: hp_1035dx)\n");
-	printf("  -t, --tests  Run a random assortment of tests\n");
+	printf("  -T, --tests  Run a random assortment of tests\n");
 	printf("  -d, --dpcd   Read DisplayPort configuration data\n");
 	printf("  -e, --edid   Read EDID over AUX channel (DANGEROUS)\n");
+	printf("  -t, --trace  Print IO traces on stderr\n");
 }
 
 static void parse_options(int argc, char *argv[], struct global_cfg *config)
@@ -45,9 +47,10 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 	struct option long_options[] = {
 		{"help",	no_argument, 		0, 'h'},
 		{"replay",	no_argument,		0, 'r'},
-		{"tests",	no_argument,		0, 't'},
+		{"tests",	no_argument,		0, 'T'},
 		{"dpcd",	no_argument,		0, 'd'},
 		{"edid",	no_argument,		0, 'e'},
+		{"trace",	no_argument,		0, 't'},
 		{0, 0, 0, 0}
 	};
 
@@ -57,7 +60,7 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 	 * Parse arguments
 	 */
 	while (1) {
-		opt = getopt_long(argc, argv, "hrtde",
+		opt = getopt_long(argc, argv, "hrTdet",
 				  long_options, &option_index);
 
 		if (opt == EOF)
@@ -68,7 +71,7 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 			config->need_io_perm = true;
 			config->run_replay = true;
 			break;
-		case 't':
+		case 'T':
 			config->need_io_perm = true;
 			config->run_tests = true;
 			break;
@@ -79,6 +82,9 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 		case 'e':
 			config->need_io_perm = true;
 			config->read_edid = true;
+			break;
+		case 't':
+			radeon_enable_iotracing();
 			break;
 		case 'h':
 			print_help();
