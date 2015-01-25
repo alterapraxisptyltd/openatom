@@ -185,37 +185,38 @@ void aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
 /* Arbitrarily chosen */
 #define EXTPLL_LOCK_TIMEOUT		10000
 
-static void aruba_program_ext_pll_refclk(struct radeon_device * rdev, uint8_t pll)
+enum divisor_type {
+	DIV_REFCLOCK,
+	DIV_ENGINE,
+};
+
+static void aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
+				  enum divisor_type type)
 {
+	uint8_t shift;
+	uint32_t lockbit;
+	if (type == DIV_REFCLOCK) {
+		shift = 24;
+		lockbit = BIT(16);
+	} else {
+		shift = 0;
+		lockbit = BIT(19);
+	}
+
 	//   0025: COMP   reg[0124]  [X...]  <-  param[00]  [X...]
 	//   002a: JUMP_Equal  0042
-	if ((aruba_read(rdev, 0x124 << 2) >> 24) == pll)
+	if (((aruba_read(rdev, 0x124 << 2) >> shift) & 0xff) == pll)
 		return;
 
 	//   002d: TEST   reg[0124]  [.X..]  <-  10
 	//   0032: JUMP_Equal  002d
-	wait_set(rdev, 0x124 << 2, BIT(16), EXTPLL_LOCK_TIMEOUT);
+	wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT);
 	//   0035: MOVE   reg[0124]  [X...]  <-  param[00]  [X...]
-	aruba_mask(rdev, 0x124 << 2, 0xff << 24, pll << 24);
+	aruba_mask(rdev, 0x124 << 2, 0xff << shift, pll << 24);
 	//   003a: TEST   reg[0124]  [.X..]  <-  10
 	//   003f: JUMP_Equal  003a
-	wait_set(rdev, 0x124 << 2, BIT(16), EXTPLL_LOCK_TIMEOUT);
+	wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT);
 }
-
-static void aruba_program_ext_pll_engine(struct radeon_device * rdev, uint8_t pll)
-{
-	if ((aruba_read(rdev, 0x124 << 2) & 0xff) == pll)
-		return;
-	//   0087: TEST   reg[0124]  [.X..]  <-  08
-	//   008c: JUMP_Equal  0087
-	wait_set(rdev, 0x124 << 2, BIT(19), EXTPLL_LOCK_TIMEOUT);
-	//   008f: MOVE   reg[0124]  [...X]  <-  param[00]  [X...]
-	aruba_mask(rdev, 0x124 << 2, 0xff, pll);
-	//   0094: TEST   reg[0124]  [.X..]  <-  08
-	//   0099: JUMP_Equal  0094
-	wait_set(rdev, 0x124 << 2, BIT(19), EXTPLL_LOCK_TIMEOUT);
-}
-
 
 void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 {
@@ -237,7 +238,7 @@ void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	pll = aruba_compute_engine_pll(&ohman);
 	ohman /= 10;
 	DRM_DEBUG_KMS("We think pll should be %x (%d -> %d)\n", pll, rclock, ohman);
-	aruba_program_ext_pll_refclk(rdev, pll);
+	aruba_program_ext_pll(rdev, pll, DIV_REFCLOCK);
 	//   0042: CLEAR  WS_REMIND/HI32 [XXXX]
 	//   0045: CLEAR  param[00]  [X...]
 	//   0048: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
@@ -263,7 +264,7 @@ void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	ohman = clock_10khz * 10;
 	pll = aruba_compute_engine_pll(&ohman);
 	ohman /= 10;
-	aruba_program_ext_pll_engine(rdev, pll);
+	aruba_program_ext_pll(rdev, pll, DIV_ENGINE);
 	//   009c: COMP   param[01]  [XXXX]  <-  00000000
 	//   00a3: JUMP_NotEqual  00b3
 	if (clock_10khz != 0)
