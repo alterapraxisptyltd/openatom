@@ -53,11 +53,9 @@ extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 //                Table update indicator 0
 //
 
-void aruba_enable_crtc(struct radeon_device * rdev,
-		       uint8_t crtc_id, bool enable)
+int aruba_enable_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
 {
 	uint32_t off;
-	int ret;
 	//   0006: SET_ATI_PORT  0000  (INDIRECT_IO_MM)
 	//   0009: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
 	off = get_uniphy_reg_offset(crtc_id / 0x40, crtc_id & 0x7) << 2;
@@ -75,9 +73,10 @@ void aruba_enable_crtc(struct radeon_device * rdev,
 		aruba_mask(rdev, CRTC_CONTROL + off, CRTC_MASTER_EN, 0);
 		//   001c: TEST   reg[1b9c]  [.X..]  <-  01
 		//   0021: JUMP_NotEqual  001c
-		ret = wait_clear(rdev, CRTC_CONTROL + off, BIT(16), 1000);
-		if (ret < 0)
+		if (wait_clear(rdev, CRTC_CONTROL + off, BIT(16), 1000) < 0) {
 			DRM_ERROR("Timed out waiting for CRTC. Das ist bad");
+			return -ETIMEDOUT;
+		}
 		//   0024: AND    reg[1b7c]  [X...]  <-  7f
 		aruba_mask(rdev, CRTC_1b7c + off, BIT(31),  0);
 		//   0029: CLEAR  reg[1ba9]  [...X]
@@ -86,6 +85,7 @@ void aruba_enable_crtc(struct radeon_device * rdev,
 	}
 	//   003a: SET_REG_BLOCK  0000
 	//   003d: EOT
+	return 0;
 }
 
 
@@ -99,7 +99,7 @@ void aruba_enable_crtc(struct radeon_device * rdev,
 //                Parameter space size   00 longs
 //                Table update indicator 0
 //
-void aruba_update_crtc_x2_buf(struct radeon_device * rdev,
+int aruba_update_crtc_x2_buf(struct radeon_device * rdev,
 			     uint8_t crtc_id, bool enable)
 {
 	uint32_t off;
@@ -132,10 +132,14 @@ void aruba_update_crtc_x2_buf(struct radeon_device * rdev,
 		aruba_mask(rdev, CRTC_MASTER_UPDATE_LOCK + off, 0xff, 0);
 		//   002b: TEST   reg[1bb6]  [...X]  <-  01
 		//   0030: JUMP_NotEqual  002b
-		wait_clear(rdev, CRTC_1bb6 + off, BIT(0), 10000);
+		if (wait_clear(rdev, CRTC_1bb6 + off, BIT(0), 10000) < 0) {
+			DRM_ERROR("Timed out waiting for CRTC @1bb6[0]");
+			return -ETIMEDOUT;
+		}
 		//   0033: SET_REG_BLOCK  0000
 		//   0036: EOT
 	}
+	return 0;
 
 }
 
@@ -149,7 +153,7 @@ void aruba_update_crtc_x2_buf(struct radeon_device * rdev,
 //                Parameter space size   00 longs
 //                Table update indicator 0
 //
-void aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
+int aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
 {
 	uint32_t off, setmask;
 	//   0006: SET_ATI_PORT  0000  (INDIRECT_IO_MM)
@@ -163,22 +167,26 @@ void aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
 	//   0014: COMP   param[00]  [..X.]  <-  00
 	//   0018: JUMP_Equal  003b
 	if (!enable)
-		return;
+		return 0;
 	//   001b: TEST   reg[1b9c]  [.X..]  <-  01
 	//   0020: JUMP_Equal  003b
 	if (!(aruba_read(rdev, CRTC_CONTROL + off) & BIT(16)))
-		return;
+		return 0;
 	//   0023: TEST   reg[1ba3]  [...X]  <-  01
 	//   0028: JUMP_NotEqual  0023
-	wait_clear(rdev, CRTC_STATUS + off, CRTC_V_BLANK, 50000);
+	if (wait_clear(rdev, CRTC_STATUS + off, CRTC_V_BLANK, 50000) < 0)
+		return -ETIMEDOUT;
 	//   002b: TEST   reg[1ba3]  [...X]  <-  01
 	//   0030: JUMP_Equal  002b
-	wait_set(rdev, CRTC_STATUS + off, CRTC_V_BLANK, 50000);
+	if (wait_set(rdev, CRTC_STATUS + off, CRTC_V_BLANK, 50000) < 0)
+		return -ETIMEDOUT;
 	//   0033: TEST   reg[1ba3]  [...X]  <-  01
 	//   0038: JUMP_NotEqual  0033
-	wait_clear(rdev, CRTC_STATUS + off, CRTC_V_BLANK, 50000);
+	if (wait_clear(rdev, CRTC_STATUS + off, CRTC_V_BLANK, 50000) < 0)
+		return -ETIMEDOUT;
 	//   003b: SET_REG_BLOCK  0000
 	//   003e: EOT
+	return 0;
 
 }
 
@@ -190,7 +198,7 @@ enum divisor_type {
 	DIV_ENGINE,
 };
 
-static void aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
+static int aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
 				  enum divisor_type type)
 {
 	uint8_t shift;
@@ -206,19 +214,22 @@ static void aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
 	//   0025: COMP   reg[0124]  [X...]  <-  param[00]  [X...]
 	//   002a: JUMP_Equal  0042
 	if (((aruba_read(rdev, 0x124 << 2) >> shift) & 0xff) == pll)
-		return;
+		return 0;
 
 	//   002d: TEST   reg[0124]  [.X..]  <-  10
 	//   0032: JUMP_Equal  002d
-	wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT);
+	if (wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT) < 0)
+		return -ETIMEDOUT;
 	//   0035: MOVE   reg[0124]  [X...]  <-  param[00]  [X...]
 	aruba_mask(rdev, 0x124 << 2, 0xff << shift, pll << 24);
 	//   003a: TEST   reg[0124]  [.X..]  <-  10
 	//   003f: JUMP_Equal  003a
-	wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT);
+	if (wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT) < 0)
+		return -ETIMEDOUT;
+	return 0;
 }
 
-void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
+int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 {
 	const uint32_t rclock = 60000, ulDefaultEngineClock = 20000;
 	const uint16_t usPCIEClkSSPercentage = 36;
@@ -238,7 +249,10 @@ void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	pll = aruba_compute_engine_pll(&ohman);
 	ohman /= 10;
 	DRM_DEBUG_KMS("We think pll should be %x (%d -> %d)\n", pll, rclock, ohman);
-	aruba_program_ext_pll(rdev, pll, DIV_REFCLOCK);
+	if (aruba_program_ext_pll(rdev, pll, DIV_REFCLOCK) < 0) {
+		DRM_ERROR("Refclock EXTPLL failed to lock!!!");
+		return -ETIMEDOUT;
+	}
 	//   0042: CLEAR  WS_REMIND/HI32 [XXXX]
 	//   0045: CLEAR  param[00]  [X...]
 	//   0048: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
@@ -264,18 +278,22 @@ void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	ohman = clock_10khz * 10;
 	pll = aruba_compute_engine_pll(&ohman);
 	ohman /= 10;
-	aruba_program_ext_pll(rdev, pll, DIV_ENGINE);
+	if (aruba_program_ext_pll(rdev, pll, DIV_ENGINE) < 0) {
+		DRM_ERROR("Engine EXTPLL failed to lock!!!");
+		return -ETIMEDOUT;
+	}
 	//   009c: COMP   param[01]  [XXXX]  <-  00000000
 	//   00a3: JUMP_NotEqual  00b3
 	if (clock_10khz != 0)
-		return;
+		return 0;
 	//   00a6: OR     reg[1841]  [...X]  <-  01
 	aruba_mask(rdev, 0x1841 << 2, 0, 1);
 	//   00ab: TEST   reg[1841]  [..X.]  <-  01
 	//   00b0: JUMP_Equal  00ab
-	wait_set(rdev, 0x1841 << 2, BIT(0), 10000);
+	if (wait_set(rdev, 0x1841 << 2, BIT(0), 10000) < 0)
+		return -ETIMEDOUT;
 	//   00b3: EOT
-	return;
+	return 0;
 }
 
 
