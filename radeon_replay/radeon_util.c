@@ -138,6 +138,22 @@ void radeon_write(uint32_t reg_addr, uint32_t value)
 	master_write_op(reg_addr, value);
 }
 
+uint32_t radeon_read_io(uint32_t reg_addr)
+{
+	uint32_t reg32;
+	reg32 = radeon_read_op_pio(reg_addr);
+	if (radeon_iotrace)
+		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
+	return reg32;
+}
+
+void radeon_write_io(uint32_t reg_addr, uint32_t value)
+{
+	if (radeon_iotrace)
+		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
+	radeon_write_op_pio(reg_addr, value);
+}
+
 uint32_t radeon_read_sync(uint32_t reg_addr)
 {
 	uint32_t reg32;

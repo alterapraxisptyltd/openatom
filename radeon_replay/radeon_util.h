@@ -12,6 +12,8 @@ void radeon_disable_iotracing(void);
 void sync_read(void);
 uint32_t radeon_read(uint32_t reg_addr);
 void radeon_write(uint32_t reg_addr, uint32_t value);
+uint32_t radeon_read_io(uint32_t reg_addr);
+void radeon_write_io(uint32_t reg_addr, uint32_t value);
 uint32_t radeon_read_sync(uint32_t reg_addr);
 void radeon_write_sync(uint32_t reg_addr, uint32_t value);
 void radeon_delay(uint32_t internal_timer);
