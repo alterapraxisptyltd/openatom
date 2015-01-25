@@ -456,9 +456,9 @@ int drm_dp_i2c_xfer(struct drm_dp_aux *aux, struct i2c_seg *msgs,
 		 * decreased performance. Therefore each message is simply
 		 * transferred byte-by-byte.
 		 */
-		for (j = 0; j < msgs[i].len; j++) {
+		for (j = 0; j < ((msgs[i].len + 15) / 16) * 16; j += 16) {
 			msg.buffer = msgs[i].buf + j;
-			msg.size = 1;
+			msg.size = min(16, msgs[i].len - j);;
 
 			err = drm_dp_i2c_do_msg(aux, &msg);
 			if (err < 0)
