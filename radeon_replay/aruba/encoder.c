@@ -220,10 +220,6 @@ void aruba_encoder_setup_other(struct radeon_device *rdev, uint8_t id,
 	return;
 }
 
-static bool encoder_mode_is_dp(int mode)
-{
-	return (mode == ATOM_ENCODER_MODE_DP) || (mode == ATOM_ENCODER_MODE_DP_AUDIO);
-}
 // command_table  0000e742  #04  (SetClocksRatio/DIGxEncoderControl):
 //
 //   Size         01c8
