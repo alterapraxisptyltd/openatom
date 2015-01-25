@@ -159,4 +159,28 @@ void aruba_mask_io(struct radeon_device *rdev, uint32_t reg, uint32_t clrbits, u
 	radeon_write_io(reg, reg32);
 }
 
+static inline
+int wait_set(struct radeon_device *rdev, uint32_t reg, uint32_t bitmask,
+	     int timeout_us)
+{
+	while (!(aruba_read(rdev, reg) & bitmask)) {
+		if (!(timeout_us--))
+			return -ETIMEDOUT;
+		udelay(1);
+	}
+	return 0;
+}
+
+static inline
+int wait_clear(struct radeon_device *rdev, uint32_t reg, uint32_t bitmask,
+	       int timeout_us)
+{
+	while (aruba_read(rdev, reg) & bitmask) {
+		if (!(timeout_us--))
+			return -ETIMEDOUT;
+		udelay(1);
+	}
+	return 0;
+}
+
 #endif /* _LINUX_GLUE_H */
