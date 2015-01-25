@@ -2,6 +2,9 @@
 #define __RADEON_UTIL_H
 
 #include <stdint.h>
+#include <errno.h>
+
+#include "coreboot_glue.h"
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -41,6 +44,50 @@ void radeon_mask_io(struct radeon_device *rdev, uint32_t reg, uint32_t clrbits, 
 	reg32 &= ~clrbits;
 	reg32 |= setbits;
 	radeon_write_io(rdev, reg, reg32);
+}
+
+/**
+ * \brief Wait until a bit is set by the hardware
+ *
+ * Wait until the bit specified in 'bitmask' is set by the hardware within a
+ * given timeout. This function is meant to be used in places where very small
+ * delays are expected, on the order of a few microseconds. If more than a bit
+ * is specified in 'bitmask' this function only waits until one bit is set.
+ *
+ * @return -ETIMEDOUT on a timeout, or zero otherwise
+ */
+static inline
+int radeon_wait_set(struct radeon_device *rdev, uint32_t reg, uint32_t bitmask,
+		    unsigned int timeout_us)
+{
+	while (!(radeon_read(rdev, reg) & bitmask)) {
+		if (!(timeout_us--))
+			return -ETIMEDOUT;
+		udelay(1);
+	}
+	return 0;
+}
+
+/**
+ * \brief Wait until a bit is cleared by the hardware
+ *
+ * Wait until the bit specified in 'bitmask' is set by the hardware within a
+ * given timeout. This function is meant to be used in places where very small
+ * delays are expected, on the order of a few microseconds. If more than a bit
+ * is specified in 'bitmask' this function waits until all the bits are cleared.
+ *
+ * @return -ETIMEDOUT on a timeout, or zero otherwise
+ */
+static inline
+int radeon_wait_clear(struct radeon_device *rdev, uint32_t reg,
+		      uint32_t bitmask, unsigned int timeout_us)
+{
+	while (radeon_read(rdev, reg) & bitmask) {
+		if (!(timeout_us--))
+			return -ETIMEDOUT;
+		udelay(1);
+	}
+	return 0;
 }
 
 #endif /* RADEON_UTIL */
