@@ -60,15 +60,15 @@ struct radeon_pll_config {
 };
 
 /* aruba_crtc.c */
-void aruba_enable_crtc(struct radeon_device * rdev,
+int aruba_enable_crtc(struct radeon_device * rdev,
 		       uint8_t crtc_id, bool enable);
-void aruba_update_crtc_x2_buf(struct radeon_device * rdev,
+int aruba_update_crtc_x2_buf(struct radeon_device * rdev,
 			      uint8_t crtc_id, bool enable);
-void aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable);
+int aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable);
 void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 			       struct drm_display_mode *mode,
 			       uint8_t h_border, uint8_t v_border);
-void aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz);
+int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz);
 void aruba_set_encoder_crtc_source(struct radeon_device * rdev,
 				   uint8_t crtc_id, uint8_t encoder_id,
 				   uint8_t encoder_mode);
