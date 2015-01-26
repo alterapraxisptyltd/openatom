@@ -254,7 +254,7 @@ void aruba_encoder_video_on(struct radeon_device *rdev, uint8_t encoder_id)
 	//   01a5: DELAY_MicroSec  0a
 	usleep(10);
 	//   01a7: MOVE   reg[1cc3]  [..XX]  <-  0201
-	aruba_mask(rdev, CTL_VIDEO + off, 0xffff, 0x0201);
+	aruba_mask(rdev, CTL_VIDEO + off, 0xffff, BIT(9) | VIDEO_ON);
 	//   01ad: DELAY_MicroSec  c8
 	usleep(200);
 }
