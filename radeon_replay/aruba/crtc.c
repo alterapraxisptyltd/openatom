@@ -221,7 +221,7 @@ static int aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
 	if (wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT) < 0)
 		return -ETIMEDOUT;
 	//   0035: MOVE   reg[0124]  [X...]  <-  param[00]  [X...]
-	aruba_mask(rdev, 0x124 << 2, 0xff << shift, pll << 24);
+	aruba_mask(rdev, 0x124 << 2, 0xff << shift, pll << shift);
 	//   003a: TEST   reg[0124]  [.X..]  <-  10
 	//   003f: JUMP_Equal  003a
 	if (wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT) < 0)
