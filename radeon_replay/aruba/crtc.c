@@ -296,42 +296,6 @@ int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	return 0;
 }
 
-
-
-typedef struct _SET_CRTC_USING_DTD_TIMING_PARAMETERS
-{
-	// param[00]
-	uint16_t  usH_Size;
-	uint16_t  usH_Blanking_Time;
-	// param[01]
-	uint16_t  usV_Size;
-	uint16_t  usV_Blanking_Time;
-	// param[02]
-	uint16_t  usH_SyncOffset;
-	//uint16_t  usH_SyncWidth;
-	// param[03]
-	uint16_t  usV_SyncOffset;
-	//uint16_t  usV_SyncWidth;
-	// param[04]
-	uint16_t  usAccess;
-	uint8_t   ucH_Border;         // From DFP EDID
-	uint8_t   ucV_Border;
-	// param[05]
-	uint8_t   ucCRTC;             // ATOM_CRTC1 or ATOM_CRTC2
-	uint8_t   ucPadding[3];
-}SET_CRTC_USING_DTD_TIMING_PARAMETERS;
-
-#define ATOM_H_CUTOFF           0x01
-#define ATOM_HSYNC_POLARITY     0x02             //0=Active High, 1=Active Low
-#define ATOM_VSYNC_POLARITY     0x04             //0=Active High, 1=Active Low
-#define ATOM_V_CUTOFF           0x08
-#define ATOM_H_REPLICATIONBY2   0x10
-#define ATOM_V_REPLICATIONBY2   0x20
-#define ATOM_COMPOSITESYNC      0x40
-#define ATOM_INTERLACE          0x80
-#define ATOM_DOUBLE_CLOCK_MODE  0x100
-#define ATOM_RGB888_MODE        0x200
-
 // command_table  0000cbc8  #31  (SetCRTC_UsingDTDTiming):
 //
 //   Size         0128
@@ -343,7 +307,6 @@ typedef struct _SET_CRTC_USING_DTD_TIMING_PARAMETERS
 //                Table update indicator 0
 //
 
-#include <stddef.h>
 void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 			       struct drm_display_mode *mode,
 			       uint8_t h_border, uint8_t v_border)
