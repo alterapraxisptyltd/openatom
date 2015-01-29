@@ -545,6 +545,7 @@ static void quick_link_training(struct radeon_device *rdev)
 		break;
 	}
 	aruba_encoder_link_training_finish(rdev, 4);
+	drm_dp_dpcd_writeb(&my_aux, DP_TRAINING_PATTERN_SET, DP_TRAINING_PATTERN_DISABLE);
 
 	drm_dp_dpcd_read_link_status(aux, sts);
 
