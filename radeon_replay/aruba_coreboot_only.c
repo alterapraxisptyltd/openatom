@@ -44,8 +44,8 @@ void aruba_disable_grph_srfc(struct radeon_device *rdev, uint8_t surf)
 }
 
 
-void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf,
-			    uint8_t enable)
+void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t enable,
+			    uint16_t h, uint16_t w, uint16_t pizditch)
 {
 	extern uint32_t global_fucksize;
 	uint32_t regptr;
@@ -123,8 +123,8 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf,
 	uint32_t wfuck = aruba_read(rdev, 0xc4 << 2);
 	//   00e2: MOVE   WS_REMIND/HI32 [XXXX]  <-  WS_FB_WIN [XXXX]
 	uint32_t rfuck = wfuck;
-	uint16_t gfh = global_fucksize & 0xffff;
-	uint16_t gfw = global_fucksize >> 16;
+	uint16_t gfh = h;
+	uint16_t gfw = w;
 	//   00e6: ADD    WS_FB_WIN [XXXX]  <-  reg[00c6]  [XXXX]
 	wfuck += aruba_read(rdev, 0xc6 << 2);
 	//   00eb: ADD    WS_REMIND/HI32 [XXXX]  <-  reg[00c8]  [XXXX]
@@ -157,11 +157,11 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf,
 	//   0128: MOVE   reg[1a0d]  [..XX]  <-  param[00]  [XX..]
 	aruba_mask(rdev, (0x1a0d + regptr) << 2, 0xffff, gfw);
 	//   012d: MASK   reg[1a01]  [..XX]  &  f8fc  |  param[01]
-	aruba_mask(rdev, (0x1a01 + regptr) << 2, 0x0703, global_fucksize >> 16);
+	aruba_mask(rdev, (0x1a01 + regptr) << 2, 0x0703, 0x8109);
 	//   0134: AND    reg[1a01]  [.X..]  <-  0f
 	aruba_mask(rdev, (0x1a01 + regptr) << 2, 0xf0 << 16, 0);
 	//   0139: MOVE   reg[1a06]  [..XX]  <-  param[01]  [..XX]
-	aruba_mask(rdev, (0x1a06 + regptr) << 2, 0xffff, global_fucksize >> 16);
+	aruba_mask(rdev, (0x1a06 + regptr) << 2, 0xffff, pizditch);
 	//   013e: MOVE   reg[1a00]  [...X]  <-  01
 	aruba_mask(rdev, (0x1a00 + regptr) << 2, 0xff, 1);
 	//   0143: OR     reg[1b9c]  [X...]  <-  10
@@ -399,4 +399,119 @@ void aruba_fuck_my_lute(struct radeon_device *rdev, uint8_t lute_id)
 		//   00d5: JUMP_Below  00a9
 	}
 	//   00d8: EOT
+}
+
+// command_table  0000e0ba  #35  (MemoryCleanUp):
+//
+//   Size         00dc
+//   Format Rev.  01
+//   Param Rev.   00
+//   Content Rev. 01
+//   Attributes:  Work space size        01 longs
+//                Parameter space size   01 longs
+//                Table update indicator 0
+//
+struct _MEMORY_CLEAN_UP_PARAMETERS
+{
+	uint16_t  usMemoryStart;                //in 8Kb boundary, offset from memory base address
+	uint16_t  usMemorySize;                 //8Kb blocks aligned
+};
+#include "linux_glue.h"
+void aruba_mcleanup(struct radeon_device *rdev, uint16_t start_8k, uint16_t size_8k)
+{
+	uint8_t saviour;
+	uint32_t memend_256b, memend_64k, wok;
+	uint32_t membase_256b, membase_b, size_b, size_now;
+	//   0006: SET_ATI_PORT  0000  (INDIRECT_IO_MM)
+	//   0009: MOVE   WS_REMIND/HI32 [XXXX]  <-  reg[00c4]  [XXXX]
+	//   000e: SHIFT_RIGHT  WS_REMIND/HI32 [XXXX]  by  08
+	membase_256b = aruba_read(rdev, 0x310) >> 8;
+	//   0012: MOVE   WS_REMIND/HI32 [X...]  <-  reg[00c9]  [...X]
+	membase_256b |= aruba_read(rdev, 0x324) << 24;
+	//   0017: CLEAR  WS_QUOT/LOW32 [XXXX]
+	//   001a: MOVE   WS_QUOT/LOW32 [..XX]  <-  start
+	//   001e: SHIFT_LEFT  WS_QUOT/LOW32 [XXXX]  by  05
+	memend_256b = start_8k << 5;
+	//   0022: ADD    WS_QUOT/LOW32 [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+	memend_256b += membase_256b;
+	//   0026: MOVE   param[00]  [...X]  <-  WS_QUOT/LOW32 [X...]
+	saviour = memend_256b >> 24;
+	//   002a: SHIFT_LEFT  WS_QUOT/LOW32 [XXXX]  by  08
+	memend_64k = memend_256b << 8;
+	//   002e: SET_FB_BASE  00001700
+	//   0034: CLEAR  fb[00]     [XXXX]
+	//   0037: SET_DATA_BLOCK  0b  (VRAM_UsageByFirmware)
+	//   0039: MOVE   work[00]   [XXXX]  <-  00001700
+	//   0040: SHIFT_RIGHT  work[00]   [XXXX]  by  08
+	wok = 0x00001700 >> 8;
+	//   0044: ADD    WS_REMIND/HI32 [XXXX]  <-  work[00]   [XXXX]
+	membase_256b += wok;
+	//   0048: MOVE   work[00]   [XXXX]  <-  data[0004] [XXXX]
+	wok = 0x0007ffe0; //ulStartAddrUsedByFirmware
+	//   004d: SHIFT_LEFT  work[00]   [XXXX]  by  02
+	wok <<= 2;
+	//   0051: ADD    WS_REMIND/HI32 [XXXX]  <-  work[00]   [XXXX]
+	membase_256b += wok;
+	//   0055: MOVE   reg[2181]  [...X]  <-  WS_REMIND/HI32 [X...]
+	aruba_mask(rdev, 0x8604, 0xff, membase_256b >> 24);
+	//   005a: SHIFT_LEFT  WS_REMIND/HI32 [XXXX]  by  08
+	membase_b = membase_256b << 8;
+	//   005e: MOVE   reg[2180]  [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+	aruba_write(rdev, 0x8600, membase_b);
+	//   0063: CLEAR  work[00]   [XXXX]
+	//   0066: MOVE   work[00]   [..XX]  <-  size
+	//   006a: SHIFT_LEFT  work[00]   [XXXX]  by  0d
+	size_b = size_8k << 13; // size 8k * 8*KiB
+	do {
+		//fprintf(stderr, "size_beer\t\t0x%x\n", size_b);
+		/*do {
+			//   006e: DELAY_MicroSec  c8
+			udelay(200);
+			//   0070: TEST   reg[21a0]  [X...]  <-  80
+			//   0075: JUMP_NotEqual  006e
+		} while(aruba_read(rdev, CP_STAT) & BIT(31));*/
+		if (wait_clear(rdev, CP_STAT, BIT(31), 20000) < 0)
+			DRM_ERROR("mothafuckin' timeout\n");
+		//   0078: COMP   work[00]   [XXXX]  <-  00000000
+		//   007f: JUMP_Equal  00cb
+		if (size_b == 0)
+			break;
+		//   0082: MOVE   WS_REMIND/HI32 [XXXX]  <-  00100000
+		size_now = 0x00100000;
+		//   0089: COMP   work[00]   [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+		//   008d: JUMP_Above  0094
+		if (size_b <= size_now)
+			//   0090: MOVE   WS_REMIND/HI32 [XXXX]  <-  work[00]   [XXXX]
+			size_now = size_b;
+		//   0094: SUB    work[00]   [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+		size_b -= size_now;
+		//   0098: MOVE   reg[2183]  [...X]  <-  param[00]  [...X]
+		aruba_mask(rdev, 0x860c, 0xff, saviour);
+		//   009d: MOVE   reg[2182]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+		aruba_write(rdev, 0x8608, memend_64k);
+		//   00a2: SHIFT_RIGHT  WS_QUOT/LOW32 [XXXX]  by  08
+		memend_256b = memend_64k >> 8;
+		//   00a6: MOVE   WS_QUOT/LOW32 [X...]  <-  param[00]  [...X]
+		memend_256b |= saviour << 24;
+		//   00aa: SHIFT_RIGHT  WS_REMIND/HI32 [XXXX]  by  08
+		size_now >>= 8;
+		//   00ae: ADD    WS_QUOT/LOW32 [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+		memend_256b += size_now;
+		//   00b2: SHIFT_LEFT  WS_REMIND/HI32 [XXXX]  by  08
+		size_now <<= 8;
+		//   00b6: MOVE   param[00]  [...X]  <-  WS_QUOT/LOW32 [X...]
+		saviour = memend_256b >> 24;
+		//   00ba: SHIFT_LEFT  WS_QUOT/LOW32 [XXXX]  by  08
+		memend_64k = memend_256b << 8;
+		//   00be: OR     WS_REMIND/HI32 [XX..]  <-  d020
+		size_now |= 0xd020 << 16;
+		//   00c3: MOVE   reg[2184]  [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+		aruba_write(rdev, 0x8610, size_now);
+		//   00c8: JUMP   006e
+	} while (1);
+	//   00cb: MOVE   reg[0012]  [XXXX]  <-  00010000
+	aruba_write(rdev, 0x48, 0x00010000);
+	//   00d3: MOVE   reg[0013]  [XXXX]  <-  00010000
+	aruba_write(rdev, 0x4c, 0x00010000);
+	//   00db: EOT
 }

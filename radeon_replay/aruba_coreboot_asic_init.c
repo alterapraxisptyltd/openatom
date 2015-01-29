@@ -18,6 +18,12 @@
 #define VGA_MEMORY_BASE_ADDRESS               0x310
 #define VGA_MEMORY_BASE_ADDRESS_HIGH          0x324
 
+#define TIMED_OUT(str) \
+	do {						\
+		DRM_ERROR("Timed out on %s", str);	\
+		return;					\
+	} while(0)
+
 // command_table  0000c394  #47  (ClockSource):
 //
 //   Size         001c
@@ -289,7 +295,7 @@ void execute_master_plan(struct radeon_device * rdev)
 	if (rdev == NULL)
 		rdev = my_aux.parent;
 
-	aruba_asic_init(rdev);
+	//aruba_asic_init(rdev);
 
 	aruba_read(rdev, CONFIG_MEMSIZE);
 
@@ -306,22 +312,24 @@ void execute_master_plan(struct radeon_device * rdev)
 	ret = radeon_read_dp_aux_i2c(0, 0x50, edid_raw, 0, 128);
 	if (ret < 0) {
 		printf("Sorry. Could not get an EDID. Aborting this shit\n");
-		//return;
+		return;
 	}
 
 	ret = decode_edid(edid_raw, sizeof(edid_raw), &edid);
 	if (ret < 0) {
 		printf("Something's wrong with the EDID. farting...\n");
-		//return;
+		return;
 	}
 
+	//aruba_lcd_bloff(rdev);
 	fprintf(stderr, "\t/* brightness_control */\n");
 	aruba_brightness_control(rdev, 200, 255);
+	fprintf(stderr, "\t/* brightness_control done */\n");
 	fprintf(stderr, "\t/* travis_init */\n");
 	travis_init(rdev);
 	fprintf(stderr, "\t/* travis should now work */\n");
 
-///	vga_pre_c1();
+	vga_pre_c1();
 
 	set_video_mode_motherfucker(rdev, &edid);
 }
@@ -358,11 +366,11 @@ static void edid_to_mode(struct drm_display_mode *mode, struct edid *edid)
 	mode->crtc_clock = edid->pixel_clock;
 	mode->crtc_hdisplay = edid->ha;
 	mode->crtc_hblank_start = edid->ha;
-	mode->crtc_hblank_end = edid->ha + edid->vbl;
+	mode->crtc_hblank_end = edid->ha + edid->hbl;
 
 	mode->crtc_hsync_start = edid->ha + edid->hso;
 	mode->crtc_hsync_end = edid->ha + edid->hso + edid->hspw;
-	mode->crtc_htotal = edid->ha + edid->hso + edid->hspw;
+	mode->crtc_htotal = edid->ha + edid->hbl;
 	mode->crtc_hskew = 0;
 
 	mode->crtc_vdisplay = edid->va;
@@ -377,14 +385,36 @@ static void edid_to_mode(struct drm_display_mode *mode, struct edid *edid)
 	mode->flags |= (edid->pvsync == '-') ? DRM_MODE_FLAG_NVSYNC : 0;
 	mode->flags |= (edid->phsync == '-') ? DRM_MODE_FLAG_NHSYNC : 0;
 
+	printf( "Detailed mode (IN FUCKING DECIMAL): Clock %d KHz,\n"
+		"               %4d %4d %4d %4d hborder %x\n"
+		"               %4d %4d %4d %4d vborder %x\n"
+		"               %chsync %cvsync%s\n",
+		edid->pixel_clock,
+		mode->crtc_hdisplay,
+		mode->crtc_hsync_start,
+		mode->crtc_hsync_end,
+		mode->crtc_htotal,
+		edid->hborder,
+		mode->crtc_vdisplay,
+		mode->crtc_vsync_start,
+		mode->crtc_vsync_end,
+		mode->crtc_vtotal,
+		edid->vborder,
+		edid->phsync, edid->pvsync,
+		edid->syncmethod
+	);
+
 }
 
 uint32_t global_fucksize;
 
 extern void aruba_fuck_my_lute(struct radeon_device *rdev, uint8_t lut_id);
+void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t enable,
+			    uint16_t h, uint16_t w, uint16_t pizditch);
 
 static void quick_link_training(struct radeon_device *rdev);
 
+#define my_bpc 1
 static const uint8_t my_crtc = 0, my_pll = 2, my_hpd = 0 + 1, my_phy = 4;
 void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 {
@@ -394,13 +424,16 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	memset(&mode, 0, sizeof(mode));
 
 	fprintf(stderr, "void replay_int10_c3(void)\t// vbe_set_mode()\n{\n");
-///	c3_mambojumbo();
+	c3_mambojumbo();
 	fprintf(stderr, "\t/* blank_crtc */\n");
-	aruba_blank_crtc(rdev, my_crtc, true);
+	if (aruba_blank_crtc(rdev, my_crtc, true) < 0)
+		TIMED_OUT("crtc blanking 1");
 	fprintf(stderr, "\t/* set_disp_eng_pll */\n");
-	aruba_set_disp_eng_pll(rdev, 80000);
+	if (aruba_set_disp_eng_pll(rdev, 80000))
+		TIMED_OUT("engine PLL");
 	fprintf(stderr, "\t/* update_crtc_x2_buf */\n");
-	aruba_update_crtc_x2_buf(rdev, my_crtc, true);
+	if (aruba_update_crtc_x2_buf(rdev, my_crtc, true))
+		TIMED_OUT("x2 buf");
 	fprintf(stderr, "\t/* disable_grph_srfc */\n");
 	aruba_disable_grph_srfc(rdev, 0);
 
@@ -417,21 +450,26 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	aruba_scaler_setup(rdev, my_crtc, RMX_ASPECT);
 	fprintf(stderr, "\t/* enable_grph_srfc */\n");
 	global_fucksize = mode.crtc_hdisplay << 16 | mode.crtc_vdisplay;
-	aruba_enable_grph_srfc(rdev, 0, true);
+	global_fucksize = (0x400 << 16) | (0x300);
+	aruba_enable_grph_srfc(rdev, 0, true, 0x300, 0x400, 0x400);
 	fprintf(stderr, "\t/* lut_setup */\n");
 	aruba_fuck_my_lute(rdev, 0);
 	fprintf(stderr, "\t/* enable_grph_srfc_more */\n");
-	aruba_enable_grph_srfc(rdev, 1, true);
+	aruba_enable_grph_srfc(rdev, 1, true, 0x300, 0x400, 0x400);
 	fprintf(stderr, "\t/* lut_setup_more */\n");
 	aruba_fuck_my_lute(rdev, 1);
+	aruba_mcleanup(rdev, 0, 200);
 	fprintf(stderr, "\t/* enable_crtc */\n");
-	aruba_enable_crtc(rdev, my_crtc, true);
+	if (aruba_enable_crtc(rdev, my_crtc, true))
+		TIMED_OUT("crtc diable");
 	fprintf(stderr, "\t/* update_crtc_x2_buf */\n");
-	aruba_update_crtc_x2_buf(rdev, my_crtc, false);
+	if (aruba_update_crtc_x2_buf(rdev, my_crtc, false))
+		TIMED_OUT("c2 buf again");
 	fprintf(stderr, "\t/* set_encoder_crtc_source */\n");
 	aruba_set_encoder_crtc_source(rdev, my_crtc, 0xc, 1);
+	aruba_encoder_video_off(rdev, 4);	// <- VBIOS doesn't do this
 	fprintf(stderr, "\t/* encoder_setup_dp */\n");
-	aruba_encoder_setup_dp(rdev, 4, edid->pixel_clock, 1, 0xff, dp_rate_khz);
+	aruba_encoder_setup_dp(rdev, 4, edid->pixel_clock, 1, my_bpc, dp_rate_khz/10);
 	fprintf(stderr, "\t/* encoder_setup_panel_mode */\n");
 	aruba_encoder_setup_panel_mode(rdev, 4, 0x1);
 
@@ -477,11 +515,11 @@ static void quick_link_training(struct radeon_device *rdev)
 	drm_dp_dpcd_read(aux, DP_DPCD_REV, dpcd, sizeof(dpcd));
 	drm_dp_link_probe(aux,  &link);
 	drm_dp_link_power_up(aux, &link);
-	drm_dp_dpcd_writeb(aux, DP_DOWNSPREAD_CTRL, DP_SPREAD_AMP_0_5);
-	drm_dp_dpcd_writeb(aux, DP_EDP_CONFIGURATION_SET, 1);
 	fprintf(stderr, "\t/* link_training_start */\n");
 	aruba_encoder_link_training_start(rdev, 4);
 	drm_dp_link_configure(aux, &link);
+	drm_dp_dpcd_writeb(aux, DP_DOWNSPREAD_CTRL, DP_SPREAD_AMP_0_5);
+	drm_dp_dpcd_writeb(aux, DP_EDP_CONFIGURATION_SET, 1);
 	fprintf(stderr, "\t/* training_pattern 1 */\n");
 	aruba_encoder_link_training_pattern(rdev, 4, DP_TRAINING_PATTERN_1);
 
@@ -512,9 +550,13 @@ static void quick_link_training(struct radeon_device *rdev)
 
 	aruba_encoder_video_on(rdev, 4);
 
+	//aruba_lcd_blon(rdev);
+	/* extrenal encoder video enable */
 	aruba_mask(rdev, 0x6464, 0, 3 << 24);
-	aruba_blank_crtc(rdev, 0, false);
 
-	vga_sr_read(0x01);
-	vga_sr_write(0x01, 0x01);
+	if (aruba_blank_crtc(rdev, 0, false))
+		TIMED_OUT("when we were about to enable CRTC");
+
+	//vga_sr_read(0x01);
+	//vga_sr_write(0x01, 0x01);
 }
