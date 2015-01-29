@@ -7,9 +7,7 @@ void run_replay(uint8_t goto_skippie)
 {
 	if (goto_skippie)
 		goto end_of_asic_init;
-	sync_read();
 	inl(0x2000); /* 9ffffffc */
-	sync_read();
 	radeon_write_sync(0x1728, 0x0008c000);
 	radeon_read_sync(0x3f54); /* 00000000 */
 	radeon_write_sync(0x174c, 0x00000000);
@@ -29,17 +27,11 @@ void run_replay(uint8_t goto_skippie)
 	radeon_write_sync(0x501c, 0x0002017c);
 	radeon_write_sync(0x5020, 0x00020191);
 	radeon_write_sync(0x5024, 0x00020190);
-	sync_read();
 	outl(0x01338040, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000001 */
-	sync_read();
 	outl(0x00000001, 0x20e4);
-	sync_read();
 	outl(0x01338041, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	outl(0x00000001, 0x20e4);
 	radeon_write_sync(0x0c68, 0x66666666);
 	radeon_write_sync(0x0c74, 0x002bc666);
@@ -3118,7 +3110,6 @@ void run_replay(uint8_t goto_skippie)
 	radeon_read_sync(0x174c); /* 00000000 */
 	radeon_read_sync(0x3f54); /* 02dfe202 */
 	radeon_write_sync(0x174c, 0x000eb7b8);
-	sync_read();
 	outl(0x9ffffffc, 0x2000);
 }
 
@@ -3139,16 +3130,13 @@ void vga_pre_c1 (void)
 }
 void replay_int10_c1(void)
 {
-	sync_read();
 	inl(0x2000); /* 9ffffffc */
 	radeon_read_sync(0x4054); /* 00000000 */
-	sync_read();
 	outl(0x9ffffffc, 0x2000);
 }
 
 void replay_int10_c2(void)
 {
-	sync_read();
 	inl(0x2000); /* 9ffffffc */
 	radeon_read_sync(0x4054); /* 00000000 */
 	radeon_read_sync(0x4010); /* e0000008 */
@@ -3159,13 +3147,11 @@ void replay_int10_c2(void)
 	radeon_read_sync(0x1738); /* 00000000 */
 	radeon_write_sync(0x1738, 0x0000000b);
 	radeon_read_sync(0x1724); /* 00040000 */
-	sync_read();
 	outl(0x9ffffffc, 0x2000);
 }
 
 void c3_mambojumbo(void)
 {
-	sync_read();
 	inl(0x2000); /* 9ffffffc */
 	outw(0x0100, 0x03c4);/* vga_sr_write(0x00, 0x01); */
 	outw(0x0101, 0x03c4);/* vga_sr_write(0x01, 0x01); */
@@ -3229,7 +3215,6 @@ void c3_mambojumbo(void)
 
 void replay_int10_c3(void)
 {
-	sync_read();
 	inl(0x2000); /* 9ffffffc */
 	radeon_read_sync(0x4054); /* 00000000 */
 	radeon_read_sync(0x173c); /* 00001000 */
@@ -3771,9 +3756,7 @@ void replay_int10_c3(void)
 	radeon_read_sync(0x8680); /* 80400142 */
 	radeon_delay(0x0305271e - 0x0304ffbc);
 	radeon_read_sync(0x8680); /* 00000000 */
-	sync_read();
 	outl(0x00010000, 0x2048);
-	sync_read();
 	outl(0x00010000, 0x204c);
 	radeon_read_sync(0x1730); /* 00000002 */
 	radeon_read_sync(0x173c); /* 00001000 */
@@ -3871,190 +3854,101 @@ void replay_int10_c3(void)
 	radeon_write_sync(0x6734, 0x00000100);
 	radeon_read_sync(0x671c); /* 00010506 */
 	radeon_write_sync(0x671c, 0x00010506);
-	sync_read();
 	outl(0x01222002, 0x20e0);
-	sync_read();
 	inl(0x20e0); /* 01222002 */
-	sync_read();
 	outl(0x01226006, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a2a00 */
-	sync_read();
 	inl(0x20e0); /* 01226006 */
-	sync_read();
 	outl(0x01226006, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226006 */
-	sync_read();
 	outl(0x01226086, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a2a00 */
-	sync_read();
 	inl(0x20e0); /* 01226086 */
-	sync_read();
 	outl(0x01226086, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226086 */
-	sync_read();
 	outl(0x01226106, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a2a00 */
-	sync_read();
 	inl(0x20e0); /* 01226106 */
-	sync_read();
 	outl(0x01226106, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226106 */
-	sync_read();
 	outl(0x01226186, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a2a00 */
-	sync_read();
 	inl(0x20e0); /* 01226186 */
-	sync_read();
 	outl(0x01226186, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226186 */
-	sync_read();
 	outl(0x01226005, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226005 */
-	sync_read();
 	outl(0x01226005, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226005 */
-	sync_read();
 	outl(0x01226085, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226085 */
-	sync_read();
 	outl(0x01226085, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226085 */
-	sync_read();
 	outl(0x01226105, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226105 */
-	sync_read();
 	outl(0x01226105, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226105 */
-	sync_read();
 	outl(0x01226185, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226185 */
-	sync_read();
 	outl(0x01226185, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226185 */
-	sync_read();
 	outl(0x01226205, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226205 */
-	sync_read();
 	outl(0x01226205, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226205 */
-	sync_read();
 	outl(0x01226285, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226285 */
-	sync_read();
 	outl(0x01226285, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226285 */
-	sync_read();
 	outl(0x01226305, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226305 */
-	sync_read();
 	outl(0x01226305, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226305 */
-	sync_read();
 	outl(0x01226385, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000000 */
-	sync_read();
 	inl(0x20e0); /* 01226385 */
-	sync_read();
 	outl(0x01226385, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
-	sync_read();
 	outl(0x01120011, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000300 */
-	sync_read();
 	outl(0x00000300, 0x20e4);
 	radeon_read_sync(0x611c); /* 00000002 */
 	radeon_read_sync(0x5c18); /* 00011000 */
 	radeon_write_sync(0x5c18, 0x00011010);
-	sync_read();
 	outl(0x0132804c, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000701 */
-	sync_read();
 	outl(0x00000701, 0x20e4);
-	sync_read();
 	outl(0x01222002, 0x20e0);
-	sync_read();
 	inl(0x20e0); /* 01222002 */
-	sync_read();
 	outl(0x01220009, 0x20e0);
-	sync_read();
 	outl(0x00000000, 0x20e4);
 	radeon_read_sync(0x671c); /* 00010506 */
 	radeon_write_sync(0x671c, 0x00010506);
 	radeon_read_sync(0x6718); /* 00000000 */
 	radeon_write_sync(0x6718, 0x00000001);
-	sync_read();
 	outl(0x0132804c, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 00000701 */
-	sync_read();
 	inl(0x20e4); /* 00000701 */
-	sync_read();
 	inl(0x20e4); /* 00000701 */
-	sync_read();
 	inl(0x20e4); /* 00000701 */
-	sync_read();
 	inl(0x20e4); /* 00000704 */
 	radeon_read_sync(0x0590); /* 00000400 */
 	radeon_write_sync(0x0590, 0x00000401);
@@ -4220,55 +4114,30 @@ void replay_int10_c3(void)
 	radeon_read_sync(0x0230); /* 00000000 */
 	radeon_read_sync(0x0230); /* 00000000 */
 	radeon_read_sync(0x0230); /* 00000001 */
-	sync_read();
 	outl(0x01222002, 0x20e0);
-	sync_read();
 	inl(0x20e0); /* 01222002 */
-	sync_read();
 	outl(0x01226006, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a0055 */
-	sync_read();
 	inl(0x20e0); /* 01226006 */
-	sync_read();
 	outl(0x01226006, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226006 */
-	sync_read();
 	outl(0x01226086, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a0055 */
-	sync_read();
 	inl(0x20e0); /* 01226086 */
-	sync_read();
 	outl(0x01226086, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226086 */
-	sync_read();
 	outl(0x01226106, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a0055 */
-	sync_read();
 	inl(0x20e0); /* 01226106 */
-	sync_read();
 	outl(0x01226106, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
-	sync_read();
 	inl(0x20e0); /* 01226106 */
-	sync_read();
 	outl(0x01226186, 0x20e0);
-	sync_read();
 	inl(0x20e4); /* 402a0055 */
-	sync_read();
 	inl(0x20e0); /* 01226186 */
-	sync_read();
 	outl(0x01226186, 0x20e0);
-	sync_read();
 	outl(0x402a0055, 0x20e4);
 	radeon_read_sync(0x173c); /* 00001000 */
 	radeon_write_sync(0x0200, 0x0001f478);
@@ -4629,7 +4498,6 @@ void replay_int10_c3(void)
 	radeon_write_sync(0x6e74, 0x00000001);
 	radeon_read_sync(0x1730); /* 00000002 */
 	radeon_read_sync(0x1730); /* 00000002 */
-	sync_read();
 	outl(0x9ffffffc, 0x2000);
 }
 
