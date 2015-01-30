@@ -666,3 +666,109 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 	//   03ba: 0101050403020201
 	//                           CTB_DS  68 bytes
 }
+
+
+/* Arbitrarily chosen */
+#define EXTPLL_LOCK_TIMEOUT		10000
+
+enum divisor_type {
+	DIV_REFCLOCK,
+	DIV_ENGINE,
+};
+
+static int aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
+				 enum divisor_type type)
+{
+	uint8_t shift;
+	uint32_t lockbit;
+	if (type == DIV_REFCLOCK) {
+		shift = 24;
+		lockbit = BIT(20);
+	} else {
+		shift = 0;
+		lockbit = BIT(19);
+	}
+
+	//   0025: COMP   reg[0124]  [X...]  <-  param[00]  [X...]
+	//   002a: JUMP_Equal  0042
+	if (((aruba_read(rdev, 0x124 << 2) >> shift) & 0xff) == pll)
+		return 0;
+
+	//   002d: TEST   reg[0124]  [.X..]  <-  10
+	//   0032: JUMP_Equal  002d
+	if (wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT) < 0)
+		return -ETIMEDOUT;
+	//   0035: MOVE   reg[0124]  [X...]  <-  param[00]  [X...]
+	aruba_mask(rdev, 0x124 << 2, 0xff << shift, pll << shift);
+	//   003a: TEST   reg[0124]  [.X..]  <-  10
+	//   003f: JUMP_Equal  003a
+	if (wait_set(rdev, 0x124 << 2, lockbit, EXTPLL_LOCK_TIMEOUT) < 0)
+		return -ETIMEDOUT;
+	return 0;
+}
+
+int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
+{
+	const uint32_t rclock = 60000, ulDefaultEngineClock = 20000;
+	const uint16_t usPCIEClkSSPercentage = 36;
+
+	uint8_t pll;
+	uint32_t ohman, clock_fuck;
+
+	//   000d: CLEAR  reg[1841]  [...X]
+	aruba_mask(rdev, 0x1841 << 2, 0xff, 0);
+	//   0011: CLEAR  reg[031f]  [...X]
+	aruba_mask(rdev, 0x31f << 2, 0xff, 0);
+	//   0015: MOVE   param[01]  [XXXX]  <-  param[00]  [XXXX]
+	//   0019: CLEAR  param[01]  [X...]
+	//   001c: MOVE   param[00]  [XXXX]  <-  0000ea60
+	//   0023: CALL_TABLE  3c  (ComputeMemoryEnginePLL)
+	ohman = rclock * 10;
+	pll = aruba_compute_engine_pll(&ohman);
+	ohman /= 10;
+	if (aruba_program_ext_pll(rdev, pll, DIV_REFCLOCK) < 0) {
+		DRM_ERROR("Refclock EXTPLL failed to lock!!!");
+		return -ETIMEDOUT;
+	}
+	//   0042: CLEAR  WS_REMIND/HI32 [XXXX]
+	//   0045: CLEAR  param[00]  [X...]
+	//   0048: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
+	//   004a: MOVE   WS_REMIND/HI32 [..XX]  <-  data[0110] [..XX]
+	//   004f: MUL    param[00]  [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+	//quot = ohman * usPCIEClkSSPercentage;
+	//   0053: DIV    WS_QUOT/LOW32 [XXXX]  <-  00004e20
+	//quot /= ulDefaultEngineClock;
+	//   005a: SUB    param[00]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+	ohman -= ohman * usPCIEClkSSPercentage / ulDefaultEngineClock;
+	//   005e: MUL    param[00]  [XXXX]  <-  0000ea60
+	clock_fuck = ohman * rclock;
+	//   0065: MOVE   reg[0142]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+	aruba_write(rdev, 0x142 << 2, clock_fuck);
+	//   006a: MOVE   reg[0146]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+	aruba_write(rdev, 0x146 << 2, clock_fuck);
+	//   006f: MOVE   reg[014a]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+	aruba_write(rdev, 0x14a << 2, clock_fuck);
+	//   0074: MOVE   reg[014e]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+	aruba_write(rdev, 0x14e << 2, clock_fuck);
+	//   0079: MOVE   param[00]  [XXXX]  <-  param[01]  [XXXX]
+	//   007d: CALL_TABLE  3c  (ComputeMemoryEnginePLL)
+	ohman = clock_10khz * 10;
+	pll = aruba_compute_engine_pll(&ohman);
+	ohman /= 10;
+	if (aruba_program_ext_pll(rdev, pll, DIV_ENGINE) < 0) {
+		DRM_ERROR("Engine EXTPLL failed to lock!!!");
+		return -ETIMEDOUT;
+	}
+	//   009c: COMP   param[01]  [XXXX]  <-  00000000
+	//   00a3: JUMP_NotEqual  00b3
+	if (clock_10khz != 0)
+		return 0;
+	//   00a6: OR     reg[1841]  [...X]  <-  01
+	aruba_mask(rdev, 0x1841 << 2, 0, 1);
+	//   00ab: TEST   reg[1841]  [..X.]  <-  01
+	//   00b0: JUMP_Equal  00ab
+	if (wait_set(rdev, 0x1841 << 2, BIT(0), 10000) < 0)
+		return -ETIMEDOUT;
+	//   00b3: EOT
+	return 0;
+}
