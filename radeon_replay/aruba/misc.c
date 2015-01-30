@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 
-extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
+extern uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 
 // command_table  0000c276  #0d  (DynamicClockGating):
 //
@@ -95,7 +95,7 @@ void aruba_powergate_crtc(struct radeon_device *rdev, uint8_t enable, uint8_t cr
 	//   002a: JUMP_Below  0039
 	if (crtc_id >= 2) {
 		//   002d: CLEAR  reg[1761]  [...X]
-		aruba_mask(rdev, (0x1761 + regptr) << 2, 0xff , 0);
+		aruba_mask(rdev, (0x1761 + regptr) << 2, 0xff, 0);
 		//   0031: COMP   reg[1762]  [X...]  <-  30
 		//   0036: JUMP_NotEqual  0031
 		while ((aruba_read(rdev, (0x1762 + regptr) << 2) >> 24) != 0x30);
@@ -161,12 +161,12 @@ void aruba_scaler_setup(struct radeon_device *rdev, uint8_t crtc_id,
 	//                           SWITCH  param[00]  [..X.]
 	//         00->0031 01->0039 02->004d
 	switch (rmx_type) {
-	default:	/* Fall through */
-	case RMX_OFF:					// ATOM_SCALER_DISABLE
+	default:		/* Fall through */
+	case RMX_OFF:		// ATOM_SCALER_DISABLE
 		//   0031: MOVE   reg[1b45]  [...X]  <-  02
 		madman = 1;
 		//   0036: JUMP   003e
-	case RMX_CENTER:	/* Fall through */	// ATOM_SCALER_CENTER
+	case RMX_CENTER:	/* Fall through */// ATOM_SCALER_CENTER
 		//   0039: MOVE   reg[1b45]  [...X]  <-  01
 		aruba_mask(rdev, (0x1b45 + regptr) << 2, 0xff, madman + 1);
 		//   003e: CLEAR  reg[1b42]  [...X]
@@ -177,8 +177,8 @@ void aruba_scaler_setup(struct radeon_device *rdev, uint8_t crtc_id,
 		aruba_write(rdev, (0x1b47 + regptr) << 2, 0);
 		//   004a: JUMP   0072
 		break;
-	case RMX_FULL:	/* Fall through */
-	case RMX_ASPECT:				// ATOM_SCALER_EXPANSION
+	case RMX_FULL:		/* Fall through */
+	case RMX_ASPECT:	// ATOM_SCALER_EXPANSION
 		//   004d: MOVE   reg[1b43]  [..XX]  <-  0101
 		aruba_mask(rdev, (0x1b43 + regptr) << 2, 0xffff, 0x0101);
 		//   0053: MOVE   reg[1b47]  [XXXX]  <-  00010001
