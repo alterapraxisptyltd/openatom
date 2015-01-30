@@ -201,7 +201,7 @@ void shutdown_pll(struct radeon_device * rdev, uint8_t pll_id)
 	//   0119: CLEAR  reg[1703]  [XXXX]
 	aruba_write(rdev, block + PLL_SS_FRAC, 0);
 	//   011d: AND    reg[1707]  [...X]  <-  f7
-	aruba_mask(rdev, block + PLL_r7, BIT(3) |  BIT(13), 0); // FIXME don't clear 13 here
+	aruba_mask(rdev, block + PLL_r7, BIT(3), 0);
 	//   0122: OR     reg[1707]  [...X]  <-  01
 	aruba_mask(rdev, block + PLL_r7, 0, BIT(0));
 	//   0127: DELAY_MicroSec  32
@@ -539,7 +539,7 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 	//   01df: JUMP   01e8
 	else
 		//   01e2: MASK   reg[1707]  [.X..]  &  f8  |  01
-		aruba_mask(rdev, block + PLL_r7, 0x7 << 16, BIT(0));
+		aruba_mask(rdev, block + PLL_r7, 0x7 << 16, BIT(16));
 
 	fuck_with_pll_config(rdev, cfg->ucPpll, cfg->ulFbDivDecFrac,
 			     cfg->usFbDiv, cfg->ucRefDiv, cfg->ucPostDiv);
