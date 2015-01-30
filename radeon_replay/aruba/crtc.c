@@ -5,8 +5,7 @@
 
 #include <stdbool.h>
 
-extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
-
+extern uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 
 #define CRTC_CONTROL				0x6e70	// 0x1b9c
 # define CRTC_MASTER_EN				BIT(0)
@@ -53,7 +52,7 @@ extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 //                Table update indicator 0
 //
 
-int aruba_enable_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
+int aruba_enable_crtc(struct radeon_device *rdev, uint8_t crtc_id, bool enable)
 {
 	uint32_t off;
 	//   0006: SET_ATI_PORT  0000  (INDIRECT_IO_MM)
@@ -78,16 +77,15 @@ int aruba_enable_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
 			return -ETIMEDOUT;
 		}
 		//   0024: AND    reg[1b7c]  [X...]  <-  7f
-		aruba_mask(rdev, CRTC_1b7c + off, BIT(31),  0);
+		aruba_mask(rdev, CRTC_1b7c + off, BIT(31), 0);
 		//   0029: CLEAR  reg[1ba9]  [...X]
-		aruba_mask(rdev, CRTC_1ba9 + off, 0xff,  0);
+		aruba_mask(rdev, CRTC_1ba9 + off, 0xff, 0);
 		//   002d: JUMP   003a
 	}
 	//   003a: SET_REG_BLOCK  0000
 	//   003d: EOT
 	return 0;
 }
-
 
 // command_table  0000ca26  #2c  (UpdateCRTC_DoubleBufferRegisters):
 //
@@ -99,7 +97,7 @@ int aruba_enable_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
 //                Parameter space size   00 longs
 //                Table update indicator 0
 //
-int aruba_update_crtc_x2_buf(struct radeon_device * rdev,
+int aruba_update_crtc_x2_buf(struct radeon_device *rdev,
 			     uint8_t crtc_id, bool enable)
 {
 	uint32_t off;
@@ -153,7 +151,7 @@ int aruba_update_crtc_x2_buf(struct radeon_device * rdev,
 //                Parameter space size   00 longs
 //                Table update indicator 0
 //
-int aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable)
+int aruba_blank_crtc(struct radeon_device *rdev, uint8_t crtc_id, bool enable)
 {
 	uint32_t off, setmask;
 	//   0006: SET_ATI_PORT  0000  (INDIRECT_IO_MM)
@@ -236,7 +234,7 @@ void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 	//   0046: MOVE   WS_REMIND/HI32 [.X..]  <-  cfg->ucH_Border
 	//   004a: SUB    WS_REMIND/HI32 [..XX]  <-  WS_REMIND/HI32 [XX..]
 	////rem = h_blank - h_sync_off - h_border;
-	val16 = mode->crtc_hblank_end - mode->crtc_hsync_start ;
+	val16 = mode->crtc_hblank_end - mode->crtc_hsync_start;
 	//   004e: MOVE   reg[1b81]  [XX..]  <-  WS_REMIND/HI32 [..XX]
 	aruba_mask(rdev, (0x1b81 + regptr) << 2, 0xffff << 16, val16 << 16);
 	//   0053: MOVE   WS_REMIND/HI32 [..XX]  <-  cfg->usH_Blanking_Time
@@ -276,7 +274,7 @@ void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 	//   00b8: MOVE   WS_REMIND/HI32 [.X..]  <-  cfg->ucV_Border
 	//   00bc: SUB    WS_REMIND/HI32 [..XX]  <-  WS_REMIND/HI32 [XX..]
 	////rem = v_blank - v_sync_off - v_border;
-	val16 = mode->crtc_vblank_end - mode->crtc_vsync_start ;
+	val16 = mode->crtc_vblank_end - mode->crtc_vsync_start;
 	//   00c0: MOVE   reg[1b8d]  [XX..]  <-  WS_REMIND/HI32 [..XX]
 	aruba_mask(rdev, (0x1b8d + regptr) << 2, 0xffff << 16, val16 << 16);
 	//   00c5: MOVE   WS_REMIND/HI32 [..XX]  <-  cfg->usV_Blanking_Time
@@ -284,14 +282,16 @@ void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 	//   00cd: ADD    WS_REMIND/HI32 [..XX]  <-  WS_REMIND/HI32 [XX..]
 	//   00d1: ADD    WS_REMIND/HI32 [..XX]  <-  cfg->usV_Size
 	////rem = v_blank - v_sync_off + v_border + v_size;
-	val16 = mode->crtc_vblank_end - mode->crtc_vsync_start + mode->crtc_vdisplay;
-	/* Not used */ //   00d5: TEST   cfg->usAccess  <-  20 //   00d9: JUMP_Equal  00e0
+	val16 =
+	    mode->crtc_vblank_end - mode->crtc_vsync_start +
+	    mode->crtc_vdisplay;
+	/* Not used *///   00d5: TEST   cfg->usAccess  <-  20 //   00d9: JUMP_Equal  00e0
 	//   00e0: MOVE   reg[1b8d]  [..XX]  <-  WS_REMIND/HI32 [..XX]
 	aruba_mask(rdev, (0x1b8d + regptr) << 2, 0xffff, val16);
 	//   00e5: MOVE   WS_REMIND/HI32 [...X]  <-  cfg->usAccess
 	//   00e9: AND    WS_REMIND/HI32 [...X]  <-  04
 	//   00ed: SHIFT_RIGHT  WS_REMIND/HI32 [...X]  by  02
-	r8 = (mode->flags & DRM_MODE_FLAG_NVSYNC) ? BIT(0): 0;
+	r8 = (mode->flags & DRM_MODE_FLAG_NVSYNC) ? BIT(0) : 0;
 	//   00f1: MOVE   reg[1b8f]  [...X]  <-  WS_REMIND/HI32 [...X]
 	aruba_mask(rdev, (0x1b8f + regptr) << 2, 0xff, r8);
 	//   00f6: CLEAR  reg[1b5f]  [XXXX]
@@ -302,7 +302,7 @@ void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 	//   0104: MOVE   WS_REMIND/HI32 [...X]  <-  cfg->usAccess
 	//   0108: AND    WS_REMIND/HI32 [...X]  <-  80
 	//   010c: SHIFT_RIGHT  WS_REMIND/HI32 [...X]  by  07
-	r8 = (mode->flags & DRM_MODE_FLAG_INTERLACE) ? BIT(0): 0;
+	r8 = (mode->flags & DRM_MODE_FLAG_INTERLACE) ? BIT(0) : 0;
 	//   0110: MOVE   reg[1b9e]  [...X]  <-  WS_REMIND/HI32 [...X]
 	aruba_mask(rdev, (0x1b9e + regptr) << 2, 0xff, r8);
 	//   0115: SET_REG_BLOCK  0000
@@ -323,7 +323,7 @@ void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 //                Table update indicator 0
 //
 
-void aruba_overscan_setup(struct radeon_device * rdev, uint8_t crtc_id,
+void aruba_overscan_setup(struct radeon_device *rdev, uint8_t crtc_id,
 			  uint8_t h_border, uint8_t v_border)
 {
 	uint32_t off, reg32;
@@ -331,7 +331,7 @@ void aruba_overscan_setup(struct radeon_device * rdev, uint8_t crtc_id,
 	//   0009: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
 	off = get_uniphy_reg_offset(0, crtc_id) << 2;
 	//   000b: MOVE   reg[1b5e]  [XXXX]  <-  param[00]  [XXXX]
-	reg32 =  (h_border << 16) | h_border;
+	reg32 = (h_border << 16) | h_border;
 	aruba_write(rdev, CRTC_H_OVERSCAN + off, reg32);
 	//   0010: MOVE   reg[1b5f]  [XXXX]  <-  param[01]  [XXXX]
 	reg32 = (v_border << 16) | v_border;
