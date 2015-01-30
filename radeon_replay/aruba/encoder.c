@@ -54,7 +54,7 @@ static const uint8_t bpc[17] = {
 	[16] = PANEL_16BIT_PER_COLOR,
 };
 
-extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
+extern uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 
 static const uint8_t ucLVDS_Misc = 0x1c;
 #define PANEL_MISC_DUAL                   0x01
@@ -70,7 +70,7 @@ void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 	uint32_t quot, off;
 	uint32_t pixel_clock = pixel_clock_khz / 10;
 
-	regptr =  get_uniphy_reg_offset(0, id);
+	regptr = get_uniphy_reg_offset(0, id);
 	off = regptr << 2;
 	//   004b: CLEAR  reg[1c83]  [XXXX]
 	aruba_write(rdev, (0x1c83 + regptr) << 2, 0);
@@ -138,12 +138,11 @@ void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 }
 
 void aruba_encoder_setup_other(struct radeon_device *rdev, uint8_t id,
-			 uint8_t mode,
-			 uint8_t lane_num)
+			       uint8_t mode, uint8_t lane_num)
 {
 	uint16_t regptr;
 
-	regptr =  get_uniphy_reg_offset(0, id);
+	regptr = get_uniphy_reg_offset(0, id);
 
 	//   004b: CLEAR  reg[1c83]  [XXXX]
 	aruba_write(rdev, (0x1c83 + regptr) << 2, 0);
@@ -161,7 +160,7 @@ void aruba_encoder_setup_other(struct radeon_device *rdev, uint8_t id,
 	//   006e: JUMP_NotEqual  0103
 
 	switch (mode) {
-		case ATOM_ENCODER_MODE_DVI:
+	case ATOM_ENCODER_MODE_DVI:
 		//   00fb: MOVE   reg[1c83]  [XXXX]  <-  00000000
 		aruba_write(rdev, (0x1c83 + regptr) << 2, 0);
 	default:		/* Fall through */
@@ -300,7 +299,6 @@ void aruba_encoder_link_training_finish(struct radeon_device *rdev,
 	aruba_mask(rdev, (0x1cc0 + regptr) << 2, 0, BIT(4));
 }
 
-
 // command_table  0000c778  #2a  (SelectCRTC_Source):
 //
 //   Size         00c8
@@ -334,7 +332,7 @@ static uint8_t dig_encoder_id_to_index(uint8_t dig_encoder_id)
 		return dig_encoder_id - 8;
 }
 
-void aruba_set_encoder_crtc_source(struct radeon_device * rdev,
+void aruba_set_encoder_crtc_source(struct radeon_device *rdev,
 				   uint8_t crtc_id, uint8_t encoder_id,
 				   uint8_t encoder_mode)
 {
@@ -346,73 +344,74 @@ void aruba_set_encoder_crtc_source(struct radeon_device * rdev,
 	//         0d3f005a5a
 	//                           SWITCH  encoder_id
 	//         00->002f 07->0037 03->003f 09->003f 0a->003f 0b->003f 0c->003f 0d->003f
-	switch (encoder_id)
-	{
-		case ASIC_INT_DAC1_ENCODER_ID: //0x0:
-			//   002f: MOVE   reg[19e5]  [...X]  <-  crtc_id
-			aruba_mask(rdev, 0x19e5 << 2, 0xff, crtc_id);
-			//   0034: JUMP   00b2
+	switch (encoder_id) {
+	case ASIC_INT_DAC1_ENCODER_ID:	//0x0:
+		//   002f: MOVE   reg[19e5]  [...X]  <-  crtc_id
+		aruba_mask(rdev, 0x19e5 << 2, 0xff, crtc_id);
+		//   0034: JUMP   00b2
+		break;
+	case ASIC_INT_DVO_ENCODER_ID:	//0x7:
+		//   0037: MOVE   reg[1859]  [...X]  <-  crtc_id
+		aruba_mask(rdev, 0x1859 << 2, 0xff, crtc_id);
+		//   003c: JUMP   00b2
+		break;
+	default:
+		//   002e: EOT
+		return;
+	case ASIC_INT_DIG1_ENCODER_ID:	//0x3: // fall
+	case ASIC_INT_DIG2_ENCODER_ID:	//0x9: // fall
+	case ASIC_INT_DIG3_ENCODER_ID:	//0xa: // fall
+	case ASIC_INT_DIG4_ENCODER_ID:	//0xb: // fall
+	case ASIC_INT_DIG5_ENCODER_ID:	//0xc: // fall
+	case ASIC_INT_DIG6_ENCODER_ID:	//0xd: // fall
+
+		//   003f: MOVE   save  <-  crtc_id
+
+		//   0055: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
+		regptr =
+		    get_uniphy_reg_offset(0,
+					  dig_encoder_id_to_index(encoder_id));
+		off = regptr << 2;
+		//   0057: MASK   reg[1c00]  [...X]  &  f8  |  save
+		aruba_mask(rdev, (0x1c00 + regptr) << 2, 0x3, crtc_id);
+
+		//   0061: COMP   encoder_mode  <-  01
+		//   0065: JUMP_NotEqual  00b2
+		if (encoder_mode != ATOM_ENCODER_MODE_LVDS)
 			break;
-		case ASIC_INT_DVO_ENCODER_ID:	//0x7:
-			//   0037: MOVE   reg[1859]  [...X]  <-  crtc_id
-			aruba_mask(rdev, 0x1859 << 2, 0xff, crtc_id);
-			//   003c: JUMP   00b2
-			break;
-		default:
-			//   002e: EOT
-			return;
-		case ASIC_INT_DIG1_ENCODER_ID:	//0x3: // fall
-		case ASIC_INT_DIG2_ENCODER_ID:	//0x9: // fall
-		case ASIC_INT_DIG3_ENCODER_ID:	//0xa: // fall
-		case ASIC_INT_DIG4_ENCODER_ID:	//0xb: // fall
-		case ASIC_INT_DIG5_ENCODER_ID:	//0xc: // fall
-		case ASIC_INT_DIG6_ENCODER_ID:	//0xd: // fall
-
-			//   003f: MOVE   save  <-  crtc_id
-
-			//   0055: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
-			regptr = get_uniphy_reg_offset(0, dig_encoder_id_to_index(encoder_id));
-			off = regptr << 2;
-			//   0057: MASK   reg[1c00]  [...X]  &  f8  |  save
-			aruba_mask(rdev, (0x1c00 + regptr) << 2, 0x3, crtc_id);
-
-
-			//   0061: COMP   encoder_mode  <-  01
-			//   0065: JUMP_NotEqual  00b2
-			if (encoder_mode != ATOM_ENCODER_MODE_LVDS)
-				break;
-			//   0068: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
-			regptr = get_uniphy_reg_offset(0, crtc_id);
-			off = regptr << 2;
-			//   006a: CLEAR  reg[1bf2]  [XXXX]
-			aruba_write(rdev, BIT_DEPTH_CTL + off, 0);
-			//   006e: SET_DATA_BLOCK  06  (LVDS_Info)
-			//   0070: MOVE   WS_REMIND/HI32 [X...]  <-  data[0028] [...X]
-			//   0075: AND    WS_REMIND/HI32 [X...]  <-  70
-			//   0079: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
-			//   007b: MOVE   WS_QUOT/LOW32 [XXXX]  <-  data[0140] [XXXX]
-			//   0080: COMP   WS_QUOT/LOW32 [XXXX]  <-  00000000
-			//   0087: JUMP_Equal  0092
-			if (ulLCDBitDepthControlVal != 0); {
-				//   008a: MOVE   reg[1bf2]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-				aruba_write(rdev, BIT_DEPTH_CTL + off, ulLCDBitDepthControlVal);
-				//   008f: JUMP   00b8
-				goto l_less_common;
-			}
-			//   0092: COMP   WS_REMIND/HI32 [X...]  <-  20
-			//   0096: JUMP_Above  00b8
-			if ((ucLVDS_Misc & 0x70) > 0x20)
-				goto l_less_common;
-			//   0099: JUMP_NotEqual  00a7
-			if ((ucLVDS_Misc & 0x70) == 0x20)
-				//   009c: OR     reg[1bf2]  [XXXX]  <-  0000f100
-				aruba_mask(rdev, BIT_DEPTH_CTL + off, 0, 0xf100);
-			//   00a4: JUMP   00b8
-			else
-				//   00a7: OR     reg[1bf2]  [XXXX]  <-  0000a100
-				aruba_mask(rdev, BIT_DEPTH_CTL + off, 0, 0xa100);
-			//   00af: JUMP   00b8
+		//   0068: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
+		regptr = get_uniphy_reg_offset(0, crtc_id);
+		off = regptr << 2;
+		//   006a: CLEAR  reg[1bf2]  [XXXX]
+		aruba_write(rdev, BIT_DEPTH_CTL + off, 0);
+		//   006e: SET_DATA_BLOCK  06  (LVDS_Info)
+		//   0070: MOVE   WS_REMIND/HI32 [X...]  <-  data[0028] [...X]
+		//   0075: AND    WS_REMIND/HI32 [X...]  <-  70
+		//   0079: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
+		//   007b: MOVE   WS_QUOT/LOW32 [XXXX]  <-  data[0140] [XXXX]
+		//   0080: COMP   WS_QUOT/LOW32 [XXXX]  <-  00000000
+		//   0087: JUMP_Equal  0092
+		if (ulLCDBitDepthControlVal != 0) ; {
+			//   008a: MOVE   reg[1bf2]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+			aruba_write(rdev, BIT_DEPTH_CTL + off,
+				    ulLCDBitDepthControlVal);
+			//   008f: JUMP   00b8
 			goto l_less_common;
+		}
+		//   0092: COMP   WS_REMIND/HI32 [X...]  <-  20
+		//   0096: JUMP_Above  00b8
+		if ((ucLVDS_Misc & 0x70) > 0x20)
+			goto l_less_common;
+		//   0099: JUMP_NotEqual  00a7
+		if ((ucLVDS_Misc & 0x70) == 0x20)
+			//   009c: OR     reg[1bf2]  [XXXX]  <-  0000f100
+			aruba_mask(rdev, BIT_DEPTH_CTL + off, 0, 0xf100);
+		//   00a4: JUMP   00b8
+		else
+			//   00a7: OR     reg[1bf2]  [XXXX]  <-  0000a100
+			aruba_mask(rdev, BIT_DEPTH_CTL + off, 0, 0xa100);
+		//   00af: JUMP   00b8
+		goto l_less_common;
 	}
 	//   00b2: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
 	regptr = get_uniphy_reg_offset(0, crtc_id & 0x7) << 2;
