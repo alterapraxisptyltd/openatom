@@ -4,7 +4,6 @@
 #include "radeon_init_native.h"
 #include <stdbool.h>
 
-
 #define PLL_BLOCK_BASE			0x5c00
 
 #define PLL_r0				0x00
@@ -189,7 +188,7 @@ void aruba_enable_pll_ss(struct radeon_device *rdev, uint8_t pll_id,
 	//   0073: EOT
 }
 
-void shutdown_pll(struct radeon_device * rdev, uint8_t pll_id)
+void shutdown_pll(struct radeon_device *rdev, uint8_t pll_id)
 {
 	uint32_t block = get_pll_base(pll_id);
 	//   010c: CLEAR  reg[1706]  [XXXX]
@@ -214,12 +213,12 @@ void shutdown_pll(struct radeon_device * rdev, uint8_t pll_id)
 	aruba_mask(rdev, block + PLL_r7, 0, BIT(13));
 }
 
-void fuck_again_with_pll(struct radeon_device * rdev, uint8_t pll_id,
+void fuck_again_with_pll(struct radeon_device *rdev, uint8_t pll_id,
 			 uint8_t d2div)
 {
 }
 
-void fuck_with_pll_config(struct radeon_device * rdev, uint8_t pll_id,
+void fuck_with_pll_config(struct radeon_device *rdev, uint8_t pll_id,
 			  uint32_t frac_div, uint16_t int_div,
 			  uint8_t ref_div, uint8_t post_div)
 {
@@ -297,6 +296,7 @@ void fuck_with_pll_config(struct radeon_device * rdev, uint8_t pll_id,
 	//   025d: OR     reg[1707]  [...X]  <-  08
 	aruba_mask(rdev, block + PLL_r7, 0, BIT(3));
 }
+
 // command_table  0000beb4  #0c  (SetPixelClock):
 //
 //   Size         03c2
@@ -458,7 +458,7 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 	}
 
 	/* Lots of atom checks, but basically only continue with pll 0,1,2 */
-	if (cfg->ucPpll > ATOM_PPLL0) // same as ATOM_DCPLL
+	if (cfg->ucPpll > ATOM_PPLL0)	// same as ATOM_DCPLL
 		return;
 
 	shutdown_pll(rdev, cfg->ucPpll);
@@ -507,7 +507,7 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 	aruba_write(rdev, block + PLL_r8, pd->d2);
 	//   019c: TEST   param[02]  [X...]  <-  20
 	//   01a0: JUMP_Equal  01b0
-	if (!(cfg->ucMiscInfo & PIXEL_CLOCK_V6_MISC_WTF)){
+	if (!(cfg->ucMiscInfo & PIXEL_CLOCK_V6_MISC_WTF)) {
 		//   01a3: AND    reg[1707]  [.X..]  <-  f7
 		aruba_mask(rdev, block + PLL_r7, BIT(19), 0);
 		//   01a8: MOVE   reg[1700]  [..X.]  <-  60
@@ -612,7 +612,6 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 		//   0313: JUMP   0377
 		return;
 	}
-
 	//   0316: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
 	regptr = cfg->ucCRTC << 2;
 	//   031a: MOVE   WS_FB_WIN [...X]  <-  param[02]  [X...]
@@ -643,7 +642,7 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 		DRM_ERROR("Unimplemented code path\n");
 		//   0357: CLEAR  param[00]  [..X.]
 		//   035a: CALL_TABLE  23  (EnableCRTC)
-		aruba_enable_crtc(rdev, cfg->ucCRTC, 0); // FIXME: Are you sure, fucker?
+		aruba_enable_crtc(rdev, cfg->ucCRTC, 0);	// FIXME: Are you sure, fucker?
 	}
 	//   035c: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
 	regptr = cfg->ucPpll;
@@ -667,7 +666,6 @@ void aruba_set_pixel_clock(struct radeon_device * rdev,
 	//                           CTB_DS  68 bytes
 }
 
-
 /* Arbitrarily chosen */
 #define EXTPLL_LOCK_TIMEOUT		10000
 
@@ -676,7 +674,7 @@ enum divisor_type {
 	DIV_ENGINE,
 };
 
-static int aruba_program_ext_pll(struct radeon_device * rdev, uint8_t pll,
+static int aruba_program_ext_pll(struct radeon_device *rdev, uint8_t pll,
 				 enum divisor_type type)
 {
 	uint8_t shift;
