@@ -31,12 +31,10 @@
 #define TN_SMC_IND_INDEX_0			0x200
 #define TN_SMC_IND_DATA_0			0x204
 
-
 #define SMU_17		0x17
 #define SMU_18		0x18
 #define SMU_22		0x22
 #define SMU_23		0x23
-
 
 #define BIT(x)				(1 << (x))
 
@@ -149,7 +147,6 @@ void aruba_transmitter_init(struct radeon_device *rdev, uint8_t connector_id)
 
 #define DIV_UP(x, y)     (((x) + (y) - 1) / (y))
 
-
 /*
  * bl_pwm_freq_hz is LVDS_Info[0032] [..XX] (usBacklightPWM)
  */
@@ -157,9 +154,9 @@ void aruba_transmitter_init(struct radeon_device *rdev, uint8_t connector_id)
 #define PWM_RESOLUTION		4095		// 0xfff
 
 void aruba_brightness_control(struct radeon_device *rdev,
-			       uint16_t bl_pwm_freq_hz, uint8_t bl_level)
+			      uint16_t bl_pwm_freq_hz, uint8_t bl_level)
 {
-	uint32_t ticks_per_cycle, cycle_div, cycle_ctr, high_ctr;
+	uint32_t ticks_per_cycle, cycle_div, adjusted_ticks, high_ctr;
 
 	if (bl_pwm_freq_hz == 0)
 		return;
@@ -172,12 +169,17 @@ void aruba_brightness_control(struct radeon_device *rdev,
 
 	aruba_mask(rdev, 0x191b << 2, 0xffff << 16, cycle_div << 16);
 
-	cycle_ctr = PWM_MAGIC_CONST / (cycle_div * bl_pwm_freq_hz);
+	/*
+	 * Mathematically, this comes out to be exactly PWM_RESOLUTION, but
+	 * after rounding, we may end up with a slightly different resolution.
+	 * Doing things this way gets us closer to the desired PWM frequency.
+	 */
+	adjusted_ticks = PWM_MAGIC_CONST / (cycle_div * bl_pwm_freq_hz);
 
 	aruba_mask(rdev, 0x1920 << 2, 0xff << 16, 0x0c << 16);
-	aruba_mask(rdev, 0x1920 << 2, 0xffff, cycle_ctr & 0xffff);
+	aruba_mask(rdev, 0x1920 << 2, 0xffff, adjusted_ticks & 0xffff);
 
-	high_ctr = cycle_ctr * (bl_level + 1);
+	high_ctr = adjusted_ticks * (bl_level + 1);
 	high_ctr >>= 4;
 	aruba_mask(rdev, 0x191e << 2, 0xffff, high_ctr & 0xffff);
 	aruba_mask(rdev, 0x191e << 2, 0, 0xc0 << 24);
@@ -422,7 +424,7 @@ static const struct x960_data x960_dp_table[] = { {
 	}
 };
 
-extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
+extern uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 
 // command_table  0000c3b0  #13  (EnableASIC_StaticPwrMgt):
 //
@@ -434,7 +436,7 @@ extern  uint16_t get_uniphy_reg_offset(uint8_t huge, uint8_t tits);
 //                Parameter space size   01 longs
 //                Table update indicator 0
 //
-static void fucking_smu_message(struct radeon_device * rdev, uint32_t msg)
+static void fucking_smu_message(struct radeon_device *rdev, uint32_t msg)
 {
 	//   00d6: 01028b0041        MOVE   reg[008b]  [XXXX]  <-  WS_REMIND/HI32 [XXXX]
 	aruba_write(rdev, SMC_MESSAGE_0, msg);
@@ -443,20 +445,20 @@ static void fucking_smu_message(struct radeon_device * rdev, uint32_t msg)
 	int timeout = 1000;
 	while ((aruba_read(rdev, SMC_RESP_0) & 0xff) == 0) {
 		udelay(1);
-		if(!--timeout) {
+		if (!--timeout) {
 			DRM_ERROR("SMU event timed out. farting...");
 			break;
 		}
 	}
 }
 
-static void smu_18_special_access(struct radeon_device * rdev,
+static void smu_18_special_access(struct radeon_device *rdev,
 				  uint8_t par3, uint8_t clk_id)
 {
 	uint32_t quot, rem;
 	//   0046: 3da50003          COMP   param[00]  [.X..]  <-  03
 	//   004a: 46b000            JUMP_Above  00b0
-	if (clk_id >  03)
+	if (clk_id > 03)
 		return;
 
 	//   004d: 03054100000f00    MOVE   WS_REMIND/HI32 [XXXX]  <-  000f0000
@@ -498,8 +500,7 @@ static void smu_18_special_access(struct radeon_device * rdev,
 
 static void smu_fuck_with_phy_clocks(struct radeon_device *rdev,
 				     uint8_t par3, uint8_t clk_id,
-				     uint8_t par1,
-				     uint8_t smu_msg)
+				     uint8_t par1, uint8_t smu_msg)
 {
 	uint32_t smu_reg_idx, smu_data, smu_mask;
 
@@ -509,14 +510,14 @@ static void smu_fuck_with_phy_clocks(struct radeon_device *rdev,
 	if (aruba_read(rdev, 0x05cf << 2) & ATOM_S6_ACC_MODE) {
 		//   0011: 4a25471804        TEST   reg[1847]  [...X]  <-  04
 		//   0016: 492e00            JUMP_NotEqual  002e
-		if (aruba_read(rdev, 0x1847 << 2) &  0x04)
+		if (aruba_read(rdev, 0x1847 << 2) & 0x04)
 			return;
 	}
 
 	switch (smu_msg) {
 	case SMU_18:
 		smu_18_special_access(rdev, par3, clk_id);
-	case SMU_17:	/* Fall through */
+	case SMU_17:		/* Fall through */
 		smu_reg_idx = 0x0001f478;
 		smu_data = (par3 & 0xf) << 16;
 		smu_data |= clk_id << 24;
@@ -524,7 +525,7 @@ static void smu_fuck_with_phy_clocks(struct radeon_device *rdev,
 		smu_mask = 0xffff00ff;
 		break;
 	case SMU_22:
-	case SMU_23: /* Fall through */
+	case SMU_23:		/* Fall through */
 		smu_reg_idx = 0x0001f478;
 		smu_data = clk_id << 24;
 		smu_mask = 0xff << 24;
@@ -584,7 +585,7 @@ static inline uint8_t set_to_idx(uint8_t set)
 
 	/* Pre-emphasis level in bits [3:2] */
 	idx = ((set & DP_TRAIN_PRE_EMPHASIS_MASK)
-		>> DP_TRAIN_PRE_EMPHASIS_SHIFT) << 2;
+	       >> DP_TRAIN_PRE_EMPHASIS_SHIFT) << 2;
 	/* Voltage swing level in bits [1:0] */
 	idx |= (set & DP_TRAIN_VOLTAGE_SWING_MASK)
 		>> DP_TRAIN_VOLTAGE_SWING_SHIFT;
@@ -605,7 +606,7 @@ static void aruba_pciep_mask(struct radeon_device *rdev, uint32_t pceipreg,
 }
 
 static void aruba_pciep_write(struct radeon_device *rdev, uint32_t pciepreg,
-			   uint32_t val)
+			      uint32_t val)
 {
 	aruba_write_io(rdev, PCIEP_IDX, pciepreg);
 	aruba_write_io(rdev, PCIEP_DAT, val);
@@ -815,7 +816,7 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 		ch_pn_invert = quot = phy->default_ch_pn_invert;
 	}
 	//   01ae: OR     reg[198a]  [...X]  <-  01
-	aruba_mask(rdev, (0x198a + regptr) << 2, 0, (1 << 0));
+	aruba_mask(rdev, (0x198a + regptr) << 2, 0, BIT(0));
 	//   01b3: MOVE   reg[198e]  [XXXX]  <-  WS_REMIND/HI32 [XXXX]
 	aruba_write(rdev, REG_ENC_CH_MAPPING + (regptr << 2), ch_map_reg);
 	//   01b8: SHIFT_LEFT  WS_QUOT/LOW32 [...X]  by  04
@@ -835,7 +836,7 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 		aruba_mask(rdev, (0x1987 + regptr) << 2, BIT(13), 0);
 	}
 	//   01db: SET_REG_BLOCK  0000
-	regptr = 0;	/* FIXME: are we sure? */
+	regptr = 0;		/* FIXME: are we sure? */
 	//   01de: MOVE   WS_DATAPTR [..XX]  <-  WS_FB_WIN [XX..]
 	//   01e2: MOVE   reg[0038]  [XXXX]  <-  data[0000] [XXXX]
 	aruba_write(rdev, PCIEP_IDX, phy->pciep_phy_ctl_idx);
@@ -856,9 +857,9 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 				DRM_ERROR("Could not find drive parameters. farting...");
 				return;
 			}
-			if ( ((1 << cfg->ucPhyId) & x92ed->phy_mask) &&
-			     (cfg->ucDigMode == x92ed->dig_mode) &&
-			     (cfg->usSymClock <= x92ed->sym_clk_max))
+			if (((1 << cfg->ucPhyId) & x92ed->phy_mask) &&
+			    (cfg->ucDigMode == x92ed->dig_mode) &&
+			    (cfg->usSymClock <= x92ed->sym_clk_max))
 				break;
 			x92ed++;
 		}
@@ -961,13 +962,15 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 		//   0379: JUMP_Equal  0380
 		if (quot & ATOM_TRANSMITTER_CONFIG_V5_COHERENT)
 			//   037c: MOVE   WS_REMIND/HI32 [..X.]  <-  WS_REMIND/HI32 [...X]
-			rem = x916d->smells_like_a_bitmask | (x916d->smells_like_a_bitmask << 8);
+			rem =
+			    x916d->smells_like_a_bitmask | (x916d->
+							    smells_like_a_bitmask
+							    << 8);
 	}
-
 	//   0380: MOVE   reg[1706]  [...X]  <-  WS_REMIND/HI32 [..X.]
 	aruba_mask(rdev, (0x1706 + regptr) << 2, 0xff, (rem >> 8) & 0xff);
 	//   0385: SET_REG_BLOCK  0000
-	regptr = 0;	/* FIXME: Of cpurse we're not sure it's what it means */
+	regptr = 0;		/* FIXME: Of cpurse we're not sure it's what it means */
 	//   0388: TEST   cfg->ucConfig  <-  01
 	//   038c: JUMP_NotEqual  03e0
 	if (!(cfg->ucConfig & BIT(0))) {
@@ -985,7 +988,7 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 			x960d = x960_dp_table;
 
 		do {
-			 //   03ad: MOVE   WS_QUOT/LOW32 [..XX]  <-  data[0002] [..XX]
+			//   03ad: MOVE   WS_QUOT/LOW32 [..XX]  <-  data[0002] [..XX]
 			quot = x960d->d2;
 			//   03b2: COMP   cfg->usSymCloc  <-  data[0000] [..XX]
 			//   03b7: JUMP_BelowOrEq  03c2
@@ -1038,7 +1041,7 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 	//   041e: TEST   cfg->ucConfig  <-  08
 	//   0422: JUMP_NotEqual  0429
 	if (!(cfg->ucConfig & ATOM_TRANSMITTER_CONFIG_V5_P2PLL)
-		&& !(cfg->ucConfig & ATOM_TRANSMITTER_CONFIG_V5_P0PLL))
+	    && !(cfg->ucConfig & ATOM_TRANSMITTER_CONFIG_V5_P0PLL))
 		//   0425: OR     WS_REMIND/HI32 [X...]  <-  02
 		rem |= 0x02;
 	//   0429: COMP   cfg->ucLaneNum  <-  04
@@ -1196,7 +1199,7 @@ void aruba_transmitter_vsemph(struct radeon_device *rdev, uint8_t phy_id,
 
 	lane_sel = set_to_idx(lane_sel);
 	//   0693: 02050223000000    MOVE   param[02]  [XXXX]  <-  00000023
-	par3  = par2 = par1 = 0;
+	par3 = par2 = par1 = 0;
 	//   069a: 02a4021700        MOVE   cfg->ucReserved  <-  data[0017] [...X]
 	par2 = phy->city_17;
 	//   069f: 5213              CALL_TABLE  13  (EnableASIC_StaticPwrMgt)
@@ -1210,7 +1213,7 @@ void aruba_transmitter_vsemph(struct radeon_device *rdev, uint8_t phy_id,
 	//// EXT_DISPLAY_PATH sPath[phy->ext_disp_path_idx]
 	//   06b5: 2d0a4240          ADD    WS_DATAPTR [..XX]  <-  WS_QUOT/LOW32 [..XX]
 	//   06b9: 0324400c00        MOVE   WS_QUOT/LOW32 [...X]  <-  data[000c] [...X]
-	quot = 0xe4; // What do you know? This is the channel mapping!!!
+	quot = 0xe4;		// What do you know? This is the channel mapping!!!
 	//   06be: 3e254002          COMP   WS_QUOT/LOW32 [...X]  <-  02
 	//   06c2: 49cc06            JUMP_NotEqual  06cc
 	if (quot == 0x02) {
