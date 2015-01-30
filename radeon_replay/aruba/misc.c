@@ -119,7 +119,7 @@ void aruba_powergate_crtc(struct radeon_device *rdev, uint8_t enable, uint8_t cr
 	//   005f: MOVE   reg[1af6]  [XXXX]  <-  00000001
 	aruba_write(rdev, (0x1af6 + regptr) << 2, 1);
 	//   0067: OR     reg[1bb6]  [.X..]  <-  01
-	aruba_mask(rdev, (0x1bb6 + regptr) << 2, 0, BIT(0));
+	aruba_mask(rdev, (0x1bb6 + regptr) << 2, 0, BIT(16));
 	//   006c: MOVE   reg[1b31]  [XXXX]  <-  04000800
 	aruba_write(rdev, (0x1b31 + regptr) << 2, 0x04000800);
 	//   0074: MOVE   reg[1bc5]  [...X]  <-  06
