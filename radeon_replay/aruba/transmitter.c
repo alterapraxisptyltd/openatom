@@ -646,6 +646,8 @@ void aruba_transmitter_enable(struct radeon_device *rdev,
 	uint32_t setbit = 0, sb2 = 0;
 	uint16_t ppar[4];
 
+	cfg->usSymClock /= 10;
+
 	//   0052: MOVE   WS_DATAPTR [..XX]  <-  WS_FB_WIN [XX..]
 	//   0056: MOVE   WS_REGPTR [..XX]  <-  data[0010] [..XX]
 	regptr = phy->reg_offset;
