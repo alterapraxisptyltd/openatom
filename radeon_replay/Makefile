@@ -11,7 +11,8 @@ SRCS=radeon_replay.c \
 	linux_glue.c \
 	radeon_util.c \
 	vga_io.c \
-	vga_gilded.c
+	vga_gilded.c \
+	coreboot_libre_radeon.c
 
 OBJS = $(sort ${SRCS:.c=.o})
 
