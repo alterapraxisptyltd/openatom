@@ -1,5 +1,5 @@
 //#include "evergreend.h"
-#include "trinityd.h"
+#include "aruba/trinityd.h"
 #include "radeon_util.h"
 #include "radeon_init_native.h"
 #include "linux_glue.h"	// For aruba_ IO accessor ONLY!!!!!!!!!
@@ -329,7 +329,7 @@ void execute_master_plan(struct radeon_device * rdev)
 	travis_init(rdev);
 	fprintf(stderr, "\t/* travis should now work */\n");
 
-	vga_pre_c1();
+	//vga_pre_c1();
 
 	set_video_mode_motherfucker(rdev, &edid);
 }
@@ -404,9 +404,16 @@ static void edid_to_mode(struct drm_display_mode *mode, struct edid *edid)
 		edid->syncmethod
 	);
 
-}
+	printf( "The wrong shit that the EDID handler decided for us\n"
+		"  screen must be %dx%d\n"
+		"  you must have %d bits per pixel\n"
+		"  and the framenuffer stride must be %d bytes\n",
+		edid->x_resolution, edid->y_resolution,
+		edid->framebuffer_bits_per_pixel,
+		edid->bytes_per_line
+	);
 
-uint32_t global_fucksize;
+}
 
 extern void aruba_fuck_my_lute(struct radeon_device *rdev, uint8_t lut_id);
 void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t enable,
@@ -414,7 +421,7 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t en
 
 static void quick_link_training(struct radeon_device *rdev);
 
-#define my_bpc 1
+#define my_bpc 6
 static const uint8_t my_crtc = 0, my_pll = 2, my_hpd = 0 + 1, my_phy = 4;
 void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 {
@@ -424,7 +431,7 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	memset(&mode, 0, sizeof(mode));
 
 	fprintf(stderr, "void replay_int10_c3(void)\t// vbe_set_mode()\n{\n");
-	c3_mambojumbo();
+	//c3_mambojumbo();
 	fprintf(stderr, "\t/* blank_crtc */\n");
 	if (aruba_blank_crtc(rdev, my_crtc, true) < 0)
 		TIMED_OUT("crtc blanking 1");
@@ -449,16 +456,15 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	fprintf(stderr, "\t/* enable_scaler */\n");
 	aruba_scaler_setup(rdev, my_crtc, RMX_ASPECT);
 	fprintf(stderr, "\t/* enable_grph_srfc */\n");
-	global_fucksize = mode.crtc_hdisplay << 16 | mode.crtc_vdisplay;
-	global_fucksize = (0x400 << 16) | (0x300);
-	aruba_enable_grph_srfc(rdev, 0, true, 0x300, 0x400, 0x400);
+	//global_fucksize = (0x400 << 16) | (0x300);
+	aruba_enable_grph_srfc(rdev, 0, true, mode.crtc_vdisplay, mode.crtc_hdisplay, mode.crtc_hdisplay);
 	fprintf(stderr, "\t/* lut_setup */\n");
 	aruba_fuck_my_lute(rdev, 0);
 	fprintf(stderr, "\t/* enable_grph_srfc_more */\n");
-	aruba_enable_grph_srfc(rdev, 1, true, 0x300, 0x400, 0x400);
+	//aruba_enable_grph_srfc(rdev, 1, true, mode.crtc_vdisplay, mode.crtc_hdisplay, mode.crtc_hdisplay);
 	fprintf(stderr, "\t/* lut_setup_more */\n");
 	aruba_fuck_my_lute(rdev, 1);
-	aruba_mcleanup(rdev, 0, 200);
+	//aruba_mcleanup(rdev, 0, 200);
 	fprintf(stderr, "\t/* enable_crtc */\n");
 	if (aruba_enable_crtc(rdev, my_crtc, true))
 		TIMED_OUT("crtc diable");
