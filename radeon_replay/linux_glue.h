@@ -119,13 +119,13 @@ extern struct drm_dp_aux my_aux;
 static inline
 void aruba_write(struct radeon_device *rdev, uint32_t reg, uint32_t value)
 {
-	radeon_reg_write(reg >> 2, value);
+	radeon_write(reg, value);
 }
 
 static inline
 uint32_t aruba_read(struct radeon_device *rdev, uint32_t reg)
 {
-	return radeon_reg_read(reg >> 2);
+	return radeon_read(reg);
 }
 
 static inline
