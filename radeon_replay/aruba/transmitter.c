@@ -4,6 +4,7 @@
 #include "drm_dp_helper.h"
 #include "radeon_init_native.h"
 
+#include "trinityd.h"
 #include <stdio.h>
 
 // command_table  0000ec64  #4c  (DIG1TransmitterControl/UNIPHYTransmitterControl):
