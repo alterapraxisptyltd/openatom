@@ -705,7 +705,7 @@ static int aruba_program_ext_pll(struct radeon_device *rdev, uint8_t pll,
 	return 0;
 }
 
-int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
+int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_khz)
 {
 	const uint32_t rclock = 60000, ulDefaultEngineClock = 20000;
 	const uint16_t usPCIEClkSSPercentage = 36;
@@ -750,7 +750,7 @@ int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	aruba_write(rdev, 0x14e << 2, clock_fuck);
 	//   0079: MOVE   param[00]  [XXXX]  <-  param[01]  [XXXX]
 	//   007d: CALL_TABLE  3c  (ComputeMemoryEnginePLL)
-	ohman = clock_10khz * 10;
+	ohman = clock_khz;
 	pll = aruba_compute_engine_pll(&ohman);
 	ohman /= 10;
 	if (aruba_program_ext_pll(rdev, pll, DIV_ENGINE) < 0) {
@@ -759,7 +759,7 @@ int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz)
 	}
 	//   009c: COMP   param[01]  [XXXX]  <-  00000000
 	//   00a3: JUMP_NotEqual  00b3
-	if (clock_10khz != 0)
+	if (clock_khz != 0)
 		return 0;
 	//   00a6: OR     reg[1841]  [...X]  <-  01
 	aruba_mask(rdev, 0x1841 << 2, 0, 1);
