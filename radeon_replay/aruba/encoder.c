@@ -39,14 +39,15 @@
 #define ATOM_ENCODER_MODE_DP_MST				5                       // For DP1.2
 
 // define ucBitPerColor:
-#define PANEL_BPC_UNDEFINE					-1 // FIXME
 #define PANEL_6BIT_PER_COLOR					0x00
 #define PANEL_8BIT_PER_COLOR					0x01
 #define PANEL_10BIT_PER_COLOR					0x02
 #define PANEL_12BIT_PER_COLOR					0x03
 #define PANEL_16BIT_PER_COLOR					0x04
 
-static const uint8_t bpc[17] = {
+/* Yes, this table means we default to 6 bpc whenever we get an invalid value
+ * for bpc. That's of no concern, however, as this is a bug in the caller. */
+static const uint8_t bpc_to_register_table[] = {
 	[6] = PANEL_6BIT_PER_COLOR,
 	[8] = PANEL_8BIT_PER_COLOR,
 	[10] = PANEL_10BIT_PER_COLOR,
@@ -61,11 +62,18 @@ static const uint8_t ucLVDS_Misc = 0x1c;
 #define PANEL_MISC_FPDI                   0x02
 #define PANEL_MISC_8BIT_PER_COLOR         0x20
 
+static uint8_t bpc_to_register(uint8_t bpc)
+{
+	if (bpc > 16)
+		return PANEL_16BIT_PER_COLOR;
+	return bpc_to_register_table[bpc];
+}
+
 void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 			 uint16_t pixel_clock_khz, uint8_t lane_num,
-			 uint8_t bpc_mask, uint32_t dp_link_rate)
+			 uint8_t bpc, uint32_t dp_link_rate)
 {
-	uint8_t something;
+	uint8_t something, bpc_reg;
 	uint16_t regptr;
 	uint32_t quot, off;
 	uint32_t pixel_clock = pixel_clock_khz / 10;
@@ -83,13 +91,11 @@ void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 	aruba_mask(rdev, (0x1cc1 + regptr) << 2, 0xffff, 0);
 	//   007a: COMP   cfg->ucBitPerColor  <-  00
 	//   007e: JUMP_NotEqual  0085
-	if (bpc_mask == PANEL_BPC_UNDEFINE)
 		//   0081: MOVE   cfg->ucBitPerColor  <-  02
-		bpc_mask = PANEL_8BIT_PER_COLOR;
 	//   0085: SUB    cfg->ucBitPerColor  <-  01
-	bpc_mask--;
+	bpc_reg = bpc_to_register(bpc);
 	//   0089: MOVE   reg[1cc1]  [X...]  <-  cfg->ucBitPerColor
-	aruba_mask(rdev, (0x1cc1 + regptr) << 2, 0xff << 24, bpc_mask << 24);
+	aruba_mask(rdev, (0x1cc1 + regptr) << 2, 0xff << 24, bpc_reg << 24);
 	/*
 	 * OK, we're not changing the link rate if video is on, but then how
 	 * do we change it? Someone forgetting to turn video off before calling
