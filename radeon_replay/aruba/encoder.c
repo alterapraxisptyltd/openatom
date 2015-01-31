@@ -77,6 +77,7 @@ void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 	uint16_t regptr;
 	uint32_t quot, off;
 	uint32_t pixel_clock = pixel_clock_khz / 10;
+	dp_link_rate /= 10;
 
 	regptr = get_uniphy_reg_offset(0, id);
 	off = regptr << 2;
