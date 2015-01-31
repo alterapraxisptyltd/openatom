@@ -1,11 +1,119 @@
 //#include "evergreend.h"
-#include "trinityd.h"
+#include "aruba/trinityd.h"
 #include "radeon_util.h"
 #include "radeon_init_native.h"
 #include "linux_glue.h"	// For aruba_ IO accessor ONLY!!!!!!!!!
 #include "ObjectID.h"
 #include "drm_dp_helper.h"
 #include "edid.h"
+
+/* GRPH blocks at 0x6800, 0x7400, 0x10000, 0x10c00, 0x11800, 0x12400 */
+#define GRPH_ENABLE                           0x6800
+#define GRPH_CONTROL                          0x6804
+#       define GRPH_DEPTH(x)                  (((x) & 0x3) << 0)
+#       define GRPH_DEPTH_8BPP                0
+#       define GRPH_DEPTH_16BPP               1
+#       define GRPH_DEPTH_32BPP               2
+#       define GRPH_NUM_BANKS(x)              (((x) & 0x3) << 2)
+#       define ADDR_SURF_2_BANK               0
+#       define ADDR_SURF_4_BANK               1
+#       define ADDR_SURF_8_BANK               2
+#       define ADDR_SURF_16_BANK              3
+#       define GRPH_Z(x)                      (((x) & 0x3) << 4)
+#       define GRPH_BANK_WIDTH(x)             (((x) & 0x3) << 6)
+#       define ADDR_SURF_BANK_WIDTH_1         0
+#       define ADDR_SURF_BANK_WIDTH_2         1
+#       define ADDR_SURF_BANK_WIDTH_4         2
+#       define ADDR_SURF_BANK_WIDTH_8         3
+#       define GRPH_FORMAT(x)                 (((x) & 0x7) << 8)
+/* 8 BPP */
+#       define GRPH_FORMAT_INDEXED            0
+/* 16 BPP */
+#       define GRPH_FORMAT_ARGB1555           0
+#       define GRPH_FORMAT_ARGB565            1
+#       define GRPH_FORMAT_ARGB4444           2
+#       define GRPH_FORMAT_AI88               3
+#       define GRPH_FORMAT_MONO16             4
+#       define GRPH_FORMAT_BGRA5551           5
+/* 32 BPP */
+#       define GRPH_FORMAT_ARGB8888           0
+#       define GRPH_FORMAT_ARGB2101010        1
+#       define GRPH_FORMAT_32BPP_DIG          2
+#       define GRPH_FORMAT_8B_ARGB2101010     3
+#       define GRPH_FORMAT_BGRA1010102        4
+#       define GRPH_FORMAT_8B_BGRA1010102     5
+#       define GRPH_FORMAT_RGB111110          6
+#       define GRPH_FORMAT_BGR101111          7
+#       define GRPH_BANK_HEIGHT(x)            (((x) & 0x3) << 11)
+#       define ADDR_SURF_BANK_HEIGHT_1        0
+#       define ADDR_SURF_BANK_HEIGHT_2        1
+#       define ADDR_SURF_BANK_HEIGHT_4        2
+#       define ADDR_SURF_BANK_HEIGHT_8        3
+#       define GRPH_TILE_SPLIT(x)             (((x) & 0x7) << 13)
+#       define ADDR_SURF_TILE_SPLIT_64B       0
+#       define ADDR_SURF_TILE_SPLIT_128B      1
+#       define ADDR_SURF_TILE_SPLIT_256B      2
+#       define ADDR_SURF_TILE_SPLIT_512B      3
+#       define ADDR_SURF_TILE_SPLIT_1KB       4
+#       define ADDR_SURF_TILE_SPLIT_2KB       5
+#       define ADDR_SURF_TILE_SPLIT_4KB       6
+#       define GRPH_MACRO_TILE_ASPECT(x)      (((x) & 0x3) << 18)
+#       define ADDR_SURF_MACRO_TILE_ASPECT_1  0
+#       define ADDR_SURF_MACRO_TILE_ASPECT_2  1
+#       define ADDR_SURF_MACRO_TILE_ASPECT_4  2
+#       define ADDR_SURF_MACRO_TILE_ASPECT_8  3
+#       define GRPH_ARRAY_MODE(x)             (((x) & 0x7) << 20)
+#       define GRPH_ARRAY_LINEAR_GENERAL      0
+#       define GRPH_ARRAY_LINEAR_ALIGNED      1
+#       define GRPH_ARRAY_1D_TILED_THIN1      2
+#       define GRPH_ARRAY_2D_TILED_THIN1      4
+#define GRPH_LUT_10BIT_BYPASS_CONTROL         0x6808
+#       define LUT_10BIT_BYPASS_EN            (1 << 8)
+#define GRPH_SWAP_CONTROL                     0x680c
+#       define GRPH_ENDIAN_SWAP(x)            (((x) & 0x3) << 0)
+#       define GRPH_ENDIAN_NONE               0
+#       define GRPH_ENDIAN_8IN16              1
+#       define GRPH_ENDIAN_8IN32              2
+#       define GRPH_ENDIAN_8IN64              3
+#       define GRPH_RED_CROSSBAR(x)           (((x) & 0x3) << 4)
+#       define GRPH_RED_SEL_R                 0
+#       define GRPH_RED_SEL_G                 1
+#       define GRPH_RED_SEL_B                 2
+#       define GRPH_RED_SEL_A                 3
+#       define GRPH_GREEN_CROSSBAR(x)         (((x) & 0x3) << 6)
+#       define GRPH_GREEN_SEL_G               0
+#       define GRPH_GREEN_SEL_B               1
+#       define GRPH_GREEN_SEL_A               2
+#       define GRPH_GREEN_SEL_R               3
+#       define GRPH_BLUE_CROSSBAR(x)          (((x) & 0x3) << 8)
+#       define GRPH_BLUE_SEL_B                0
+#       define GRPH_BLUE_SEL_A                1
+#       define GRPH_BLUE_SEL_R                2
+#       define GRPH_BLUE_SEL_G                3
+#       define GRPH_ALPHA_CROSSBAR(x)         (((x) & 0x3) << 10)
+#       define GRPH_ALPHA_SEL_A               0
+#       define GRPH_ALPHA_SEL_R               1
+#       define GRPH_ALPHA_SEL_G               2
+#       define GRPH_ALPHA_SEL_B               3
+#define GRPH_PRIMARY_SURFACE_ADDRESS          0x6810
+#define GRPH_SECONDARY_SURFACE_ADDRESS        0x6814
+#       define GRPH_DFQ_ENABLE                (1 << 0)
+#       define GRPH_SURFACE_ADDRESS_MASK      0xffffff00
+#define GRPH_PITCH                            0x6818
+#define GRPH_PRIMARY_SURFACE_ADDRESS_HIGH     0x681c
+#define GRPH_SECONDARY_SURFACE_ADDRESS_HIGH   0x6820
+#define GRPH_SURFACE_OFFSET_X                 0x6824
+#define GRPH_SURFACE_OFFSET_Y                 0x6828
+#define GRPH_X_START                          0x682c
+#define GRPH_Y_START                          0x6830
+#define GRPH_X_END                            0x6834
+#define GRPH_Y_END                            0x6838
+#define GRPH_UPDATE                           0x6844
+#       define GRPH_SURFACE_UPDATE_PENDING    (1 << 2)
+#       define GRPH_UPDATE_LOCK               (1 << 16)
+#define GRPH_FLIP_CONTROL                     0x6848
+#       define GRPH_SURFACE_UPDATE_H_RETRACE_EN (1 << 0)
+
 
 // command_table  0000c840  #2b  (EnableGraphSurfaces):
 //
@@ -43,12 +151,13 @@ void aruba_disable_grph_srfc(struct radeon_device *rdev, uint8_t surf)
 	aruba_mask(rdev, 0x00c1 << 2, 0xffff, 0);
 }
 
+#define VIEWPORT_START                        0x6d70
+#define VIEWPORT_SIZE                         0x6d74
 
 void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t enable,
-			    uint16_t h, uint16_t w, uint16_t pizditch)
+			    uint16_t h, uint16_t w, uint16_t fbpitch)
 {
-	extern uint32_t global_fucksize;
-	uint32_t regptr;
+	uint32_t regptr, off;
 	uint8_t big_qfuck;
 	bool condition = true, condition_d0 = false, condition_169 = true;
 	//   0006: SET_ATI_PORT  0000  (INDIRECT_IO_MM)
@@ -95,6 +204,7 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t en
 		//   00a0: OR     param[02]  [...X]  <-  80
 		//   00a4: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
 		regptr = get_uniphy_reg_offset(1, surf);
+		off = regptr << 2;
 		//   00a6: CLEAR  reg[00cc]  [XXXX]
 		aruba_write(rdev, (0xcc + regptr) << 2, 0);
 		//   00aa: CLEAR  WS_REGPTR [..XX]
@@ -123,12 +233,11 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t en
 	uint32_t wfuck = aruba_read(rdev, 0xc4 << 2);
 	//   00e2: MOVE   WS_REMIND/HI32 [XXXX]  <-  WS_FB_WIN [XXXX]
 	uint32_t rfuck = wfuck;
-	uint16_t gfh = h;
-	uint16_t gfw = w;
 	//   00e6: ADD    WS_FB_WIN [XXXX]  <-  reg[00c6]  [XXXX]
 	wfuck += aruba_read(rdev, 0xc6 << 2);
 	//   00eb: ADD    WS_REMIND/HI32 [XXXX]  <-  reg[00c8]  [XXXX]
 	//   00f0: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
+	off = regptr << 2;
 	regptr = get_uniphy_reg_offset(0, surf);
 	//   00f2: MOVE   reg[1a07]  [...X]  <-  WS_QUOT/LOW32 [.X..]
 	aruba_mask(rdev, (0x1a07 + regptr) << 2, 0xff, qfuck);
@@ -141,29 +250,38 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t en
 	//   0106: CLEAR  reg[1ac3]  [.X..]
 	aruba_mask(rdev, (0x1ac3 + regptr) << 2, 0xff << 16, 0);
 	//   010a: CLEAR  reg[1b5c]  [XXXX]
-	aruba_write(rdev, (0x1b5c + regptr) << 2, 0);
+	aruba_write(rdev, VIEWPORT_START + off, 0);
 	//   010e: MOVE   reg[1b5d]  [XXXX]  <-  param[00]  [XXXX]
-	aruba_write(rdev, (0x1b5d + regptr) << 2, global_fucksize);
+	aruba_write(rdev, VIEWPORT_SIZE + off, (w << 16) | h);
 	//   0113: CLEAR  reg[1a09]  [..XX]
-	aruba_mask(rdev, (0x1a09 + regptr) << 2, 0xffff, 0);
+	aruba_write(rdev, GRPH_SURFACE_OFFSET_X + off, 0);
 	//   0117: CLEAR  reg[1a0a]  [..XX]
-	aruba_mask(rdev, (0x1a0a + regptr) << 2, 0xffff, 0);
+	aruba_write(rdev, GRPH_SURFACE_OFFSET_Y + off, 0);
 	//   011b: CLEAR  reg[1a0b]  [..XX]
-	aruba_mask(rdev, (0x1a0b + regptr) << 2, 0xffff, 0);
+	aruba_write(rdev, GRPH_X_START + off, 0);
 	//   011f: CLEAR  reg[1a0c]  [..XX]
-	aruba_mask(rdev, (0x1a0c + regptr) << 2, 0xffff, 0);
+	aruba_write(rdev, GRPH_Y_START + off, 0);
 	//   0123: MOVE   reg[1a0e]  [..XX]  <-  param[00]  [..XX]
-	aruba_mask(rdev, (0x1a0e + regptr) << 2, 0xffff, gfh);
+	aruba_write(rdev, GRPH_Y_END + off, h);
 	//   0128: MOVE   reg[1a0d]  [..XX]  <-  param[00]  [XX..]
-	aruba_mask(rdev, (0x1a0d + regptr) << 2, 0xffff, gfw);
+	aruba_write(rdev, GRPH_X_END + off, w);
 	//   012d: MASK   reg[1a01]  [..XX]  &  f8fc  |  param[01]
-	aruba_mask(rdev, (0x1a01 + regptr) << 2, 0x0703, 0x8109);
+	uint32_t pfmt = 2;
+	//aruba_mask(rdev, GRPH_CONTROL + off, 0x0703, pfmt);
+	aruba_mask(rdev, GRPH_CONTROL + off, 0xffff, pfmt);
 	//   0134: AND    reg[1a01]  [.X..]  <-  0f
-	aruba_mask(rdev, (0x1a01 + regptr) << 2, 0xf0 << 16, 0);
+	aruba_mask(rdev, GRPH_CONTROL + off, 0xf0 << 16, 0);
 	//   0139: MOVE   reg[1a06]  [..XX]  <-  param[01]  [..XX]
-	aruba_mask(rdev, (0x1a06 + regptr) << 2, 0xffff, pizditch);
+	fbpitch = (fbpitch + 0x7f) & ~0x7f;
+	aruba_mask(rdev, GRPH_PITCH + off, 0xffff, fbpitch);
 	//   013e: MOVE   reg[1a00]  [...X]  <-  01
-	aruba_mask(rdev, (0x1a00 + regptr) << 2, 0xff, 1);
+	aruba_mask(rdev, GRPH_ENABLE  + off, 0xff, 1);
+	/* vvv extra shit vvv */
+	uint32_t swapper;
+	swapper = GRPH_RED_CROSSBAR(GRPH_RED_SEL_B);
+	swapper |= GRPH_BLUE_CROSSBAR(GRPH_BLUE_SEL_R);
+	aruba_write(rdev, GRPH_SWAP_CONTROL + off, swapper);
+	/* ^^^ extra shit ^^^ */
 	//   0143: OR     reg[1b9c]  [X...]  <-  10
 	aruba_mask(rdev, (0x1b9c + regptr) << 2, 0, BIT(28));
 	//   0148: CLEAR  reg[1a0f]  [...X]
