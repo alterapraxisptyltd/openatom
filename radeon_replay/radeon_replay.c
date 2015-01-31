@@ -32,28 +32,8 @@ static void dump_array(const uint8_t *what, size_t len)
 	printf("\n");
 }
 
-struct DIG_TRANSMITTER_CONTROL_PARAMETERS_V1_5
-{
-	uint16_t usSymClock;                    // Encoder Clock in 10kHz,(DP mode)= linkclock/10, (TMDS/LVDS/HDMI)= pixel clock,  (HDMI deep color), =pixel clock * deep_color_ratio
-	uint8_t  ucPhyId;                   // 0=UNIPHYA, 1=UNIPHYB, 2=UNIPHYC, 3=UNIPHYD, 4= UNIPHYE 5=UNIPHYF
-	uint8_t  ucAction;                                  // define as ATOM_TRANSMITER_ACTION_xxx
-
-	uint8_t  ucLaneNum;                 // indicate lane number 1-8
-	uint8_t  ucConnObjId;               // Connector Object Id defined in ObjectId.h
-	uint8_t  ucDigMode;                 // indicate DIG mode
-	union{
-		//struct ATOM_DIG_TRANSMITTER_CONFIG_V5 asConfig;
-		uint8_t ucConfig;
-	};
-
-	uint8_t  ucDigEncoderSel;           // indicate DIG front end encoder
-	uint8_t  ucDPLaneSet;
-	uint8_t  ucReserved;
-	uint8_t  ucReserved1;
-};
-
 void aruba_transmitter_enable(struct radeon_device *rdev,
-			      struct DIG_TRANSMITTER_CONTROL_PARAMETERS_V1_5 *cfg);
+			      struct DIG_TRANSMITTER_PARAMETERS *cfg);
 
 const int32_t trymafreq[] = {20000, 10000, 53300, 40000, 0, 0, 53300, 40000, 0, 0,
 			33489, 16744, 49656, 24828, 68572, 34286, 25000, -1};
@@ -181,6 +161,13 @@ static void parse_options(int argc, char *argv[], struct global_cfg *config)
 
 int main(int argc, char *argv[])
 {
+	uint32_t mmio32;
+	volatile uint32_t *base = addr;
+	mmio32 = *base;
+	mmio32 &= ~clr;
+	mmio32 |= set;
+	*base = mmio32;
+}
 
 	int dpcd_ret, edid_ret;
 	uint8_t dpcd[256], edid_raw[256];
