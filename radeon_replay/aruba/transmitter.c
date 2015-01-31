@@ -546,11 +546,11 @@ static void smu_fuck_with_phy_clocks(struct radeon_device *rdev,
 #define INVALID 0xffff
 
 static const uint16_t phy_dp_drive_params[] = {
-	/* 0.4 */	/* 0.6 V */	/* 0.8 V */	/* 1.2 V */
-	/* 0.0 dB */	0x0055,		0x0040,		0x002a,		0x0000,
-	/* 3.5 dB */	0x1540,		0x2020,		0x2a00,		INVALID,
-	/* 6.0 dB */	0x2a2a,		0x4000,		INVALID,	INVALID,
-	/* 9.5 dB */	0x5500,		INVALID,	INVALID,	INVALID
+		/* 0.4 */	/* 0.6 V */	/* 0.8 V */	/* 1.2 V */
+/* 0.0 dB */	0x0055,		0x0040,		0x002a,		0x0000,
+/* 3.5 dB */	0x1540,		0x2020,		0x2a00,		INVALID,
+/* 6.0 dB */	0x2a2a,		0x4000,		INVALID,	INVALID,
+/* 9.5 dB */	0x5500,		INVALID,	INVALID,	INVALID
 };
 
 static const uint16_t get_dp_drive_strength(uint8_t level)
