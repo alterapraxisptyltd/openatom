@@ -73,7 +73,7 @@ void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 			 uint16_t pixel_clock_khz, uint8_t lane_num,
 			 uint8_t bpc, uint32_t dp_link_rate)
 {
-	uint8_t something, bpc_reg;
+	uint8_t source_crtc_id, bpc_reg;
 	uint16_t regptr;
 	uint32_t quot, off;
 	uint32_t pixel_clock = pixel_clock_khz / 10;
@@ -130,11 +130,11 @@ void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 		aruba_mask(rdev, (0x1c00 + regptr) << 2, 0, BIT(10));
 	}
 	//   00e3: MOVE   param[01]  [...X]  <-  reg[1c00]  [...X]
-	something = aruba_read(rdev, (0x1c00 + regptr) << 2) & 0xff;
+	source_crtc_id = aruba_read(rdev, (0x1c00 + regptr) << 2) & 0xff;
 	//   00e8: AND    param[01]  [...X]  <-  07
-	something &= 7;
+	source_crtc_id &= 7;
 	//   00ec: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
-	regptr = get_uniphy_reg_offset(0, something);
+	regptr = get_uniphy_reg_offset(0, source_crtc_id);
 	//   00ee: SHIFT_LEFT  cfg->ucLaneNum  by  04
 	//   00f2: MOVE   reg[1b9c]  [.X..]  <-  cfg->ucLaneNum
 	aruba_mask(rdev, (0x1b9c + regptr) << 2, 0xff << 16, lane_num << 20); // FIXME: bitmap last
