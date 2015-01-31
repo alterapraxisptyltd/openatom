@@ -9,6 +9,15 @@
 
 #define BIG_ASS_ACRATCH_REG		0x611c	// 1847
 
+struct logoman {
+	unsigned int	width;
+	unsigned int	height;
+	unsigned int	bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+	uint8_t		pixel_data[1366 * 768 * 4 + 1];
+};
+
+extern const struct logoman libreradeon_logo;
+
 /* vvv FIXME: KILLME PLEASE vvv*/
 struct ATOM_DIG_TRANSMITTER_CONFIG_V5
 {
