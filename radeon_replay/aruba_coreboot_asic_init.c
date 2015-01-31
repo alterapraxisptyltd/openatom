@@ -421,12 +421,16 @@ void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t en
 
 static void quick_link_training(struct radeon_device *rdev);
 
-#define my_bpc 6
-static const uint8_t my_crtc = 0, my_pll = 2, my_hpd = 0 + 1, my_phy = 4;
+static const uint8_t my_bpc = 6;
+static const uint8_t my_crtc = 0;
+static const uint8_t my_pll = 2;
+static const uint8_t my_hpd = 0 + 1;
+static const uint8_t my_phy = 4;
+
 void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 {
 	struct drm_display_mode mode;
-	const uint32_t dp_rate_khz = 27000;
+	const uint32_t dp_rate = 270000;
 
 	memset(&mode, 0, sizeof(mode));
 
@@ -436,7 +440,7 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	if (aruba_blank_crtc(rdev, my_crtc, true) < 0)
 		TIMED_OUT("crtc blanking 1");
 	fprintf(stderr, "\t/* set_disp_eng_pll */\n");
-	if (aruba_set_disp_eng_pll(rdev, 80000))
+	if (aruba_set_disp_eng_pll(rdev, 800000))
 		TIMED_OUT("engine PLL");
 	fprintf(stderr, "\t/* update_crtc_x2_buf */\n");
 	if (aruba_update_crtc_x2_buf(rdev, my_crtc, true))
@@ -475,12 +479,12 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	aruba_set_encoder_crtc_source(rdev, my_crtc, 0xc, 1);
 	aruba_encoder_video_off(rdev, 4);	// <- VBIOS doesn't do this
 	fprintf(stderr, "\t/* encoder_setup_dp */\n");
-	aruba_encoder_setup_dp(rdev, 4, edid->pixel_clock, 1, my_bpc, dp_rate_khz/10);
+	aruba_encoder_setup_dp(rdev, 4, edid->pixel_clock, 1, my_bpc, dp_rate);
 	fprintf(stderr, "\t/* encoder_setup_panel_mode */\n");
 	aruba_encoder_setup_panel_mode(rdev, 4, 0x1);
 
 	struct DIG_TRANSMITTER_PARAMETERS xmit_ctl = {
-		.usSymClock = dp_rate_khz,
+		.usSymClock = dp_rate,
 		.ucPhyId = my_phy,
 		//.ucAction = 0, // Not used
 
