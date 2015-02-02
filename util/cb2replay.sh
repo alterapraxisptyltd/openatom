@@ -84,4 +84,7 @@ sed "s/radeon_write_sync($timerctl, 0x0\{1,8\});[^\r]*\r\tradeon_delay(/radeon_d
 sed "/\r/s/halt_sys: in x86emuOp_halt/}\r/g" |
 sed "/\r/s/[^\r]*runInt[$hex]*();: starting execution of INT\([$hex]*\)[^\r]*/void replay_int\1(void)\r{/g" |
 
-tr '\r' '\n'
+tr '\r' '\n' |
+
+# Remove accesses outside the 256 KiB register window
+sed -r "/radeon_(read|write)(_sync)\(0x[^0]{3}[4-9,a-f][$hex]{4}/d"
