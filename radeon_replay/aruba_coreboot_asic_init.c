@@ -460,7 +460,6 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	fprintf(stderr, "\t/* enable_scaler */\n");
 	aruba_scaler_setup(rdev, my_crtc, RMX_ASPECT);
 	fprintf(stderr, "\t/* enable_grph_srfc */\n");
-	//global_fucksize = (0x400 << 16) | (0x300);
 	aruba_enable_grph_srfc(rdev, 0, true, mode.crtc_vdisplay, mode.crtc_hdisplay, mode.crtc_hdisplay);
 	fprintf(stderr, "\t/* lut_setup */\n");
 	aruba_fuck_my_lute(rdev, 0);
