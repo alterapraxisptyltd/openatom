@@ -65,32 +65,32 @@ uint32_t aruba_read(struct radeon_device *rdev, uint32_t reg)
 static inline
 void aruba_mask(struct radeon_device *rdev, uint32_t reg, uint32_t clrbits, uint32_t setbits)
 {
-	uint32_t reg32 = radeon_read(reg);
+	uint32_t reg32 = radeon_read_old(reg);
 	reg32 &= ~clrbits;
 	reg32 |= setbits;
-	radeon_write(reg, reg32);
+	radeon_write_old(reg, reg32);
 }
 
 static inline
 void aruba_write_io(struct radeon_device *rdev, uint32_t reg, uint32_t value)
 {
-	radeon_write_io(reg, value);
+	radeon_write_io_old(reg, value);
 }
 
 static inline
 uint32_t aruba_read_io(struct radeon_device *rdev, uint32_t reg)
 {
-	return radeon_read_io(reg);
+	return radeon_read_io_old(reg);
 }
 
 
 inline static
 void aruba_mask_io(struct radeon_device *rdev, uint32_t reg, uint32_t clrbits, uint32_t setbits)
 {
-	uint32_t reg32 = radeon_read_io(reg);
+	uint32_t reg32 = radeon_read_io_old(reg);
 	reg32 &= ~clrbits;
 	reg32 |= setbits;
-	radeon_write_io(reg, reg32);
+	radeon_write_io_old(reg, reg32);
 }
 
 #endif /* _LINUX_GLUE_H */

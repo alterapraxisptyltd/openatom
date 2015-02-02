@@ -2894,80 +2894,80 @@ void run_replay(void)
 	radeon_read_sync(0x9fffa46c); /* 18000010 */
 	radeon_read_sync(0x9fffa470); /* c05613df */
 	radeon_read_sync(0x9fffa580); /* 00000000 */
-	radeon_write(0x9fffa580, 0x00000206);
+	radeon_write_old(0x9fffa580, 0x00000206);
 	radeon_read_sync(0x9fffa45c); /* 1dce0101 */
 	radeon_read_sync(0x9fffa460); /* 0050c056 */
 	radeon_read_sync(0x9fffa568); /* 00000000 */
-	radeon_write(0x9fffa568, 0x00001dce);
+	radeon_write_old(0x9fffa568, 0x00001dce);
 	radeon_read_sync(0x9fffa460); /* 0050c056 */
 	radeon_read_sync(0x9fffa568); /* 00001dce */
-	radeon_write(0x9fffa568, 0x05561dce);
+	radeon_write_old(0x9fffa568, 0x05561dce);
 	radeon_read_sync(0x9fffa56c); /* 00000000 */
-	radeon_write(0x9fffa56c, 0x000000c0);
+	radeon_write_old(0x9fffa56c, 0x000000c0);
 	radeon_read_sync(0x9fffa460); /* 0050c056 */
 	radeon_read_sync(0x9fffa464); /* 0a083030 */
 	radeon_read_sync(0x9fffa56c); /* 000000c0 */
-	radeon_write(0x9fffa56c, 0x030000c0);
+	radeon_write_old(0x9fffa56c, 0x030000c0);
 	radeon_read_sync(0x9fffa570); /* 00000000 */
-	radeon_write(0x9fffa570, 0x00000030);
+	radeon_write_old(0x9fffa570, 0x00000030);
 	radeon_read_sync(0x9fffa464); /* 0a083030 */
 	radeon_read_sync(0x9fffa468); /* c1580031 */
 	radeon_read_sync(0x9fffa574); /* 00000000 */
-	radeon_write(0x9fffa574, 0x0000000a);
+	radeon_write_old(0x9fffa574, 0x0000000a);
 	radeon_read_sync(0x9fffa570); /* 00000030 */
-	radeon_write(0x9fffa570, 0x00080030);
+	radeon_write_old(0x9fffa570, 0x00080030);
 	radeon_read_sync(0x9fffa574); /* 0000000a */
-	radeon_write(0x9fffa574, 0x0003000a);
+	radeon_write_old(0x9fffa574, 0x0003000a);
 	radeon_read_sync(0x9fffa578); /* 00000000 */
-	radeon_write(0x9fffa578, 0x00000001);
+	radeon_write_old(0x9fffa578, 0x00000001);
 	radeon_read_sync(0x9fffa468); /* c1580031 */
 	radeon_read_sync(0x9fffa46c); /* 18000010 */
 	radeon_read_sync(0x9fffa578); /* 00000001 */
-	radeon_write(0x9fffa578, 0x01580001);
+	radeon_write_old(0x9fffa578, 0x01580001);
 	radeon_read_sync(0x9fffa57c); /* 00000000 */
-	radeon_write(0x9fffa57c, 0x000000c1);
+	radeon_write_old(0x9fffa57c, 0x000000c1);
 	radeon_read_sync(0x9fffa46c); /* 18000010 */
 	radeon_read_sync(0x9fffa470); /* c05613df */
 	radeon_read_sync(0x9fffa57c); /* 000000c1 */
-	radeon_write(0x9fffa57c, 0x000000c1);
+	radeon_write_old(0x9fffa57c, 0x000000c1);
 	radeon_read_sync(0x9fffa470); /* c05613df */
 	radeon_read_sync(0x9fffa480); /* 00001800 */
 	radeon_read_sync(0x9fffa484); /* 00000000 */
 	radeon_read_sync(0x9fffa59c); /* 00000000 */
-	radeon_write(0x9fffa59c, 0x00000206);
+	radeon_write_old(0x9fffa59c, 0x00000206);
 	radeon_read_sync(0x9fffa470); /* c05613df */
 	radeon_read_sync(0x9fffa584); /* 00000000 */
-	radeon_write(0x9fffa584, 0x000013df);
+	radeon_write_old(0x9fffa584, 0x000013df);
 	radeon_read_sync(0x9fffa470); /* c05613df */
 	radeon_read_sync(0x9fffa474); /* 30300050 */
 	radeon_read_sync(0x9fffa584); /* 000013df */
-	radeon_write(0x9fffa584, 0x055613df);
+	radeon_write_old(0x9fffa584, 0x055613df);
 	radeon_read_sync(0x9fffa588); /* 00000000 */
-	radeon_write(0x9fffa588, 0x000000c0);
+	radeon_write_old(0x9fffa588, 0x000000c0);
 	radeon_read_sync(0x9fffa474); /* 30300050 */
 	radeon_read_sync(0x9fffa478); /* 00310a08 */
 	radeon_read_sync(0x9fffa588); /* 000000c0 */
-	radeon_write(0x9fffa588, 0x030000c0);
+	radeon_write_old(0x9fffa588, 0x030000c0);
 	radeon_read_sync(0x9fffa58c); /* 00000000 */
-	radeon_write(0x9fffa58c, 0x00000030);
+	radeon_write_old(0x9fffa58c, 0x00000030);
 	radeon_read_sync(0x9fffa478); /* 00310a08 */
 	radeon_read_sync(0x9fffa590); /* 00000000 */
-	radeon_write(0x9fffa590, 0x0000000a);
+	radeon_write_old(0x9fffa590, 0x0000000a);
 	radeon_read_sync(0x9fffa58c); /* 00000030 */
-	radeon_write(0x9fffa58c, 0x00080030);
+	radeon_write_old(0x9fffa58c, 0x00080030);
 	radeon_read_sync(0x9fffa590); /* 0000000a */
-	radeon_write(0x9fffa590, 0x0003000a);
+	radeon_write_old(0x9fffa590, 0x0003000a);
 	radeon_read_sync(0x9fffa594); /* 00000000 */
-	radeon_write(0x9fffa594, 0x00000001);
+	radeon_write_old(0x9fffa594, 0x00000001);
 	radeon_read_sync(0x9fffa47c); /* 0010c158 */
 	radeon_read_sync(0x9fffa594); /* 00000001 */
-	radeon_write(0x9fffa594, 0x01580001);
+	radeon_write_old(0x9fffa594, 0x01580001);
 	radeon_read_sync(0x9fffa598); /* 00000000 */
-	radeon_write(0x9fffa598, 0x000000c1);
+	radeon_write_old(0x9fffa598, 0x000000c1);
 	radeon_read_sync(0x9fffa47c); /* 0010c158 */
 	radeon_read_sync(0x9fffa480); /* 00001800 */
 	radeon_read_sync(0x9fffa598); /* 000000c1 */
-	radeon_write(0x9fffa598, 0x000000c1);
+	radeon_write_old(0x9fffa598, 0x000000c1);
 	radeon_read_sync(0x9fffa480); /* 00001800 */
 	radeon_read_sync(0x9fffa484); /* 00000000 */
 	radeon_read_sync(0x9fffa494); /* 02000000 */
@@ -11056,13 +11056,13 @@ void replay_int10_c2(void)
 	radeon_write_sync(0x9fff9c9c, 0x00000000);
 	radeon_write_sync(0x9fff9c88, 0x01170001);
 	radeon_read_sync(0x9fff9c94); /* 00000000 */
-	radeon_write(0x9fff9c94, 0x19640000);
+	radeon_write_old(0x9fff9c94, 0x19640000);
 	radeon_write_sync(0x9fff9c80, 0x03000400);
 	radeon_write_sync(0x9fff9c84, 0x01010400);
 	radeon_read_sync(0x9fff9c84); /* 01010400 */
 	radeon_read_sync(0x9fff9c88); /* 01170001 */
 	radeon_read_sync(0x9fff9c94); /* 19640000 */
-	radeon_write(0x9fff9c94, 0x19640019);
+	radeon_write_old(0x9fff9c94, 0x19640019);
 	radeon_write_sync(0x9fff9c8c, 0x05060b05);
 	radeon_write_sync(0x9fff9c90, 0x00000005);
 	radeon_read_sync(0x9fff9c80); /* 03000400 */
@@ -11143,13 +11143,13 @@ void replay_int10_c3(void)
 	radeon_write_sync(0x9fff9c3c, 0x00000000);
 	radeon_write_sync(0x9fff9c28, 0x41170001);
 	radeon_read_sync(0x9fff9c34); /* 00000000 */
-	radeon_write(0x9fff9c34, 0x19640000);
+	radeon_write_old(0x9fff9c34, 0x19640000);
 	radeon_write_sync(0x9fff9c20, 0x03000400);
 	radeon_write_sync(0x9fff9c24, 0x01010400);
 	radeon_read_sync(0x9fff9c24); /* 01010400 */
 	radeon_read_sync(0x9fff9c28); /* 41170001 */
 	radeon_read_sync(0x9fff9c34); /* 19640000 */
-	radeon_write(0x9fff9c34, 0x19640019);
+	radeon_write_old(0x9fff9c34, 0x19640019);
 	radeon_write_sync(0x9fff9c2c, 0x05060b05);
 	radeon_write_sync(0x9fff9c30, 0x00000005);
 	radeon_read_sync(0x9fff9c28); /* 41170001 */
