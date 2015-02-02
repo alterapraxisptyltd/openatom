@@ -458,7 +458,7 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 	edid_to_mode(&mode, edid);
 	aruba_set_crtc_dtd_timing(rdev, my_crtc, &mode, 0, 0);
 	fprintf(stderr, "\t/* enable_scaler */\n");
-	aruba_scaler_setup(rdev, my_crtc, RMX_ASPECT);
+	aruba_scaler_setup(rdev, my_crtc, RMX_OFF);
 	fprintf(stderr, "\t/* enable_grph_srfc */\n");
 	aruba_enable_grph_srfc(rdev, 0, true, mode.crtc_vdisplay, mode.crtc_hdisplay, mode.crtc_hdisplay);
 	fprintf(stderr, "\t/* lut_setup */\n");
