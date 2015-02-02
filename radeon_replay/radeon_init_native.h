@@ -77,7 +77,7 @@ int aruba_blank_crtc(struct radeon_device * rdev, uint8_t crtc_id, bool enable);
 void aruba_set_crtc_dtd_timing(struct radeon_device *rdev, uint8_t crtc_id,
 			       struct drm_display_mode *mode,
 			       uint8_t h_border, uint8_t v_border);
-int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_10khz);
+int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t clock_khz);
 void aruba_set_encoder_crtc_source(struct radeon_device * rdev,
 				   uint8_t crtc_id, uint8_t encoder_id,
 				   uint8_t encoder_mode);
@@ -102,7 +102,7 @@ void aruba_init_pixel_pll(struct radeon_device * rdev, uint8_t pll_id);
 /* aruba_encoder.c */
 void aruba_encoder_setup_dp(struct radeon_device *rdev, uint8_t id,
 			    uint16_t pixel_clock_khz, uint8_t lane_num,
-			    uint8_t bpc_mask, uint32_t dp_link_rate);
+			    uint8_t bpc, uint32_t dp_link_rate_khz);
 void aruba_encoder_setup_other(struct radeon_device *rdev, uint8_t id,
 			       uint8_t mode, uint8_t lane_num);
 void aruba_encoder_setup_panel_mode(struct radeon_device *rdev,
@@ -134,5 +134,7 @@ void travis_init(struct radeon_device *rdev);
 /* extras */
 uint16_t get_uniphy_reg_offset(uint8_t level, uint8_t phy);
 void aruba_disable_grph_srfc(struct radeon_device *rdev, uint8_t surf);
+void execute_master_plan(struct radeon_device * rdev);
+void aruba_mcleanup(struct radeon_device *rdev, uint16_t start_8k, uint16_t size_8k);
 
 #endif	/* __RADEON_INIT_NATIVE_H */
