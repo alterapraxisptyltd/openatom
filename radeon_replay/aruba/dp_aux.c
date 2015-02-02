@@ -203,7 +203,8 @@ int radeon_read_dp_aux_i2c(uint8_t bus, uint8_t addr,
 #define BARE_ADDRESS_SIZE 3
 #define HEADER_SIZE (BARE_ADDRESS_SIZE + 1)
 
-static ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg)
+static ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux,
+				     struct drm_dp_aux_msg *msg)
 {
 	struct radeon_i2c_chan *chan = &my_i2c;
 
@@ -223,11 +224,12 @@ static ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_m
 	switch (msg->request & ~DP_AUX_I2C_MOT) {
 	case DP_AUX_NATIVE_WRITE:
 	case DP_AUX_I2C_WRITE:
-		tx_size = (msg->size) ? (HEADER_SIZE + msg->size) : BARE_ADDRESS_SIZE;
+		tx_size = (msg->size) ? (HEADER_SIZE + msg->size)
+				      : BARE_ADDRESS_SIZE;
 
 		memcpy(tx_buf + HEADER_SIZE, msg->buffer, msg->size);
-		ret = radeon_process_aux_ch_wrapper(chan,
-					    tx_buf, tx_size, NULL, 0, &ack);
+		ret = radeon_process_aux_ch_wrapper(chan, tx_buf, tx_size,
+						    NULL, 0, &ack);
 		if (ret >= 0)
 			/* Return payload size. */
 			ret = msg->size;
@@ -235,8 +237,9 @@ static ssize_t aruba_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_m
 	case DP_AUX_NATIVE_READ:
 	case DP_AUX_I2C_READ:
 		tx_size = (msg->size) ? HEADER_SIZE : BARE_ADDRESS_SIZE;
-		ret = radeon_process_aux_ch_wrapper(chan,
-					    tx_buf, tx_size, msg->buffer, msg->size, &ack);
+		ret = radeon_process_aux_ch_wrapper(chan, tx_buf, tx_size,
+						    msg->buffer, msg->size,
+						    &ack);
 		break;
 	default:
 		ret = -EINVAL;
