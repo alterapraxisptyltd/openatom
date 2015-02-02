@@ -174,16 +174,6 @@ void radeon_write_old(uint32_t reg_addr, uint32_t value)
 	radeon_write(NULL, reg_addr, value);
 }
 
-uint32_t radeon_read_io_old(uint32_t reg_addr)
-{
-	return radeon_read_io(NULL, reg_addr);
-}
-
-void radeon_write_io_old(uint32_t reg_addr, uint32_t value)
-{
-	radeon_write_io(NULL, reg_addr, value);
-}
-
 uint32_t radeon_read_sync(uint32_t reg_addr)
 {
 	uint32_t reg32;
