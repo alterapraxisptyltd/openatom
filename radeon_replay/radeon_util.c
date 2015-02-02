@@ -10,6 +10,7 @@
 
 
 #include "radeon_util.h"
+#include "replay_util.h"
 #include "vga_io.h"
 
 typedef uint32_t radeon_read_op_t(uint32_t reg_addr);

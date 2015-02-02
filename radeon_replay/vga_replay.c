@@ -1,6 +1,6 @@
 #include <sys/io.h>
 
-#include "radeon_util.h"
+#include "replay_util.h"
 #include "vga_io.h"
 
 void run_replay(void)
