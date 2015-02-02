@@ -122,36 +122,66 @@ void sync_read(void)
 	master_sync_op();
 }
 
-uint32_t radeon_read_old(uint32_t reg_addr)
+uint32_t radeon_read(struct radeon_device *rdev, uint32_t reg)
 {
 	uint32_t reg32;
-	reg32 = master_read_op(reg_addr);
+
+	(void) rdev;
+
+	reg32 = master_read_op(reg);
 	if (radeon_iotrace)
-		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
+		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg, reg32);
 	return reg32;
+}
+
+void radeon_write(struct radeon_device *rdev, uint32_t reg, uint32_t value)
+{
+	(void) rdev;
+
+	if (radeon_iotrace)
+		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg, value);
+	master_write_op(reg, value);
+}
+
+uint32_t radeon_read_io(struct radeon_device *rdev, uint32_t reg)
+{
+	uint32_t reg32;
+
+	(void) rdev;
+
+	reg32 = radeon_read_op_pio(reg);
+	if (radeon_iotrace)
+		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg, reg32);
+	return reg32;
+}
+
+void radeon_write_io(struct radeon_device *rdev, uint32_t reg, uint32_t value)
+{
+	(void) rdev;
+
+	if (radeon_iotrace)
+		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg, value);
+	radeon_write_op_pio(reg, value);
+}
+
+uint32_t radeon_read_old(uint32_t reg_addr)
+{
+	return radeon_read(NULL, reg_addr);
 }
 
 void radeon_write_old(uint32_t reg_addr, uint32_t value)
 {
-	if (radeon_iotrace)
-		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
-	master_write_op(reg_addr, value);
+	radeon_write(NULL, reg_addr, value);
 }
 
 uint32_t radeon_read_io_old(uint32_t reg_addr)
 {
-	uint32_t reg32;
-	reg32 = radeon_read_op_pio(reg_addr);
-	if (radeon_iotrace)
-		fprintf(stderr, "\t%s(0x%04x); /* %08x */\n", __func__, reg_addr, reg32);
-	return reg32;
+	return radeon_read_io(NULL, reg_addr);
 }
 
 void radeon_write_io_old(uint32_t reg_addr, uint32_t value)
 {
-	if (radeon_iotrace)
-		fprintf(stderr, "\t%s(0x%04x, 0x%08x);\n", __func__, reg_addr, value);
-	radeon_write_op_pio(reg_addr, value);
+	radeon_write_io(NULL, reg_addr, value);
 }
 
 uint32_t radeon_read_sync(uint32_t reg_addr)

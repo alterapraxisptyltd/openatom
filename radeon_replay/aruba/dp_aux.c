@@ -35,18 +35,18 @@ static uint32_t get_aux_block(uint8_t chan_id)
 static void aux_channel_fifo_write_start(struct radeon_device *rdev,
 					 uint32_t block, uint8_t data)
 {
-	aruba_write(rdev, block + DP_AUX_FIFO, (data << 8) | BIT(31));
+	radeon_write(rdev, block + DP_AUX_FIFO, (data << 8) | BIT(31));
 }
 
 static void aux_channel_fifo_write(struct radeon_device *rdev, uint32_t block,
 				   uint8_t data)
 {
-	aruba_write(rdev, block + DP_AUX_FIFO, data << 8);
+	radeon_write(rdev, block + DP_AUX_FIFO, data << 8);
 }
 
 static uint8_t aux_channel_fifo_read(struct radeon_device *rdev, uint32_t block)
 {
-	return (aruba_read(rdev, block + DP_AUX_FIFO) >> 8) & 0xff;
+	return (radeon_read(rdev, block + DP_AUX_FIFO) >> 8) & 0xff;
 }
 
 
@@ -59,24 +59,24 @@ static ssize_t do_aux_tran(struct radeon_device *rdev,
 	uint32_t block;
 
 	block = channel_id * 0x04 << 2;
-	aruba_mask(rdev, block + REG_AUX_PAD_EN_CTL, 0xffff, 0x01 << 16);
+	radeon_mask(rdev, block + REG_AUX_PAD_EN_CTL, 0xffff, 0x01 << 16);
 
 	block = get_aux_block(channel_id);
-	aruba_mask(rdev, block + DP_AUX_CTL, HPD_MASK, HPD(hpd_id) | 0x0101);
+	radeon_mask(rdev, block + DP_AUX_CTL, HPD_MASK, HPD(hpd_id) | 0x0101);
 
 	/* Tell controller how many bytes we want to send */
-	aruba_mask(rdev, block + DP_AUX_FIFO_CTL, 0xff00ff, send_bytes << 16);
+	radeon_mask(rdev, block + DP_AUX_FIFO_CTL, 0xff00ff, send_bytes << 16);
 
 	/* Caller should make sure message is 16 bytes or less */
 	aux_channel_fifo_write_start(rdev, block, *msg++);
 	while (--send_bytes)
 		aux_channel_fifo_write(rdev, block, *msg++);
 
-	aruba_mask(rdev, block + DP_AUX_CTL2, 0, BIT(1));
-	aruba_mask(rdev, block + DP_AUX_FIFO_CTL, 0, BIT(0));
+	radeon_mask(rdev, block + DP_AUX_CTL2, 0, BIT(1));
+	radeon_mask(rdev, block + DP_AUX_FIFO_CTL, 0, BIT(0));
 
 	wait = 50;
-	while (!(aruba_read(rdev, block + DP_AUX_STATUS) & XFER_DONE)) {
+	while (!(radeon_read(rdev, block + DP_AUX_STATUS) & XFER_DONE)) {
 		usleep(10);
 		if (--wait != 0)
 			continue;
@@ -84,13 +84,14 @@ static ssize_t do_aux_tran(struct radeon_device *rdev,
 		return -ETIMEDOUT;
 	}
 
-	if (aruba_read(rdev, block + DP_AUX_STATUS) & AUX_ERROR_FLAGS)
+	if (radeon_read(rdev, block + DP_AUX_STATUS) & AUX_ERROR_FLAGS)
 		return -EBUSY;
 
-	aruba_write(rdev, block + DP_AUX_FIFO, 0x80000001);
+	radeon_write(rdev, block + DP_AUX_FIFO, 0x80000001);
 
 	*reply = aux_channel_fifo_read(rdev, block);
-	num_bytes_rcvd = (aruba_read(rdev, block + DP_AUX_STATUS) >> 24) & 0x1f;
+	num_bytes_rcvd = (radeon_read(rdev, block + DP_AUX_STATUS) >> 24);
+	num_bytes_rcvd &= 0x1f;
 
 	if (num_bytes_rcvd == 0)
 		return -EIO;
