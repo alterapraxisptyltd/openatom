@@ -200,7 +200,7 @@ static void print_help(void)
 	printf("radeon_replay [ACTIONS]\n\n");
 	printf("  -h, --help   Print this message and exit\n");
 	printf("  -r, --replay Replay a VGA init (source: hp_1035dx)\n");
-	printf("  -a, --asic_init   Run asic_init before everything else\n");
+	printf("  -a, --asic_init   Also run asic_init table or native code\n");
 	printf("  -i, --init   Try to initialize display and draw something\n");
 	printf("  -T, --tests  Run a random assortment of tests\n");
 	printf("  -d, --dpcd   Read DisplayPort configuration data\n");
@@ -318,9 +318,8 @@ int main(int argc, char *argv[])
 		run_radeon_tests();
 
 	if (config.run_replay) {
-		///aruba_asic_init(NULL);
 		printf("Replaying initial init\n");
-		run_replay(1);
+		run_replay(config.run_asic_init);
 
 		printf("Replaying first int10 call\n");
 		replay_int10_c1();
@@ -338,8 +337,11 @@ int main(int argc, char *argv[])
 		localtest();
 	}
 
-	if (config.run_init)
+	if (config.run_init) {
+		if (config.run_asic_init)
+			aruba_asic_init(NULL);
 		execute_master_plan(NULL);
+	}
 
 	return EXIT_SUCCESS;
 }
