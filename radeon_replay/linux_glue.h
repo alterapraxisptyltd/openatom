@@ -19,6 +19,7 @@
 #include "radeon_util.h"
 
 #define BIT(x)					(1 << (x))
+#define DIV_ROUND_UP(n,d)			(((n) + (d) - 1) / (d))
 
 #define DRM_DEBUG_KMS(fmt, args...)				\
 	do {							\
