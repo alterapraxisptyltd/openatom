@@ -47,11 +47,6 @@ void radeon_reg_mask(uint32_t reg, uint32_t clrbits, uint32_t setbits)
 	radeon_reg_write(reg, reg32);
 }
 
-static void udelay(uint32_t usecs)
-{
-	usleep(usecs);
-}
-
 static void sync_read_op(void)
 {
 	vga_enable_read();
