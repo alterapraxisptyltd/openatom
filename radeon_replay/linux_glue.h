@@ -47,6 +47,13 @@ struct radeon_device {
 	int dummy;
 };
 
+enum radeon_rmx_type {
+	RMX_OFF,
+	RMX_FULL,
+	RMX_CENTER,
+	RMX_ASPECT
+};
+
 extern struct radeon_i2c_chan my_i2c;
 extern struct drm_dp_aux my_aux;
 

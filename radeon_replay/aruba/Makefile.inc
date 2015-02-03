@@ -2,7 +2,8 @@
 
 ARUBA_SRCS= \
 	dp_aux.c \
-	init_misc.c
+	init_misc.c \
+	misc.c
 
 ARUBA_OBJS = $(sort ${ARUBA_SRCS:.c=.o})
 
