@@ -43,6 +43,13 @@ struct pll_settings {
 	uint8_t post_div;
 };
 
+/* backlight.c */
+void aruba_backlight_init(struct radeon_device *rdev, bool controls_edp);
+void aruba_backlight_control(struct radeon_device *rdev,
+			     uint16_t bl_pwm_freq_hz, uint8_t bl_level);
+void aruba_backlight_blon(struct radeon_device *rdev);
+void aruba_backlight_bloff(struct radeon_device *rdev);
+
 /* crtc.c */
 int aruba_enable_crtc(struct radeon_device *rdev, uint8_t crtc_id, bool enable);
 int aruba_update_crtc_x2_buf(struct radeon_device *rdev,
