@@ -3,6 +3,13 @@
 
 #include <aruba/aruba.h>
 
+struct logoman {
+	size_t width;
+	size_t height;
+	size_t p;
+	uint8_t *pixel_data;
+};
+
 void asic_init(void);
 
 void radeon_init_aux_pads(struct radeon_device* rdev);
