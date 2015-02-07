@@ -5,6 +5,7 @@ ARUBA_SRCS= \
 	crtc.c \
 	dp_aux.c \
 	encoder.c \
+	init_asic.c \
 	init_misc.c \
 	init_coreboot_helpers.c \
 	misc.c \
