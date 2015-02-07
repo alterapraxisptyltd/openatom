@@ -6,6 +6,7 @@ ARUBA_SRCS= \
 	dp_aux.c \
 	encoder.c \
 	init_asic.c \
+	init_display_path.c \
 	init_misc.c \
 	init_coreboot_helpers.c \
 	misc.c \
