@@ -9,6 +9,7 @@ SRCS=radeon_replay.c \
 	drm_dp_helper.c \
 	edid.c \
 	linux_glue.c \
+	radeon_dp_train.c \
 	radeon_util.c \
 	vga_io.c \
 	vga_gilded.c \
