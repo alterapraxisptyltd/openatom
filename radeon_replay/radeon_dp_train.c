@@ -67,7 +67,16 @@ void prepare_sink(struct dp_link_ctx *ctx)
 	drm_dp_link_power_up(ctx->aux, &ctx->link);
 
 	/* Skipped SS control */
+	/* possibly enable downspread on the sink */
+	reg8 = (ctx->dpcd[DP_MAX_DOWNSPREAD] & 0x1) ? DP_SPREAD_AMP_0_5 : 0;
+	drm_dp_dpcd_writeb(ctx->aux, DP_DOWNSPREAD_CTRL, reg8);
+
 	/* Skipped eDP control */
+	if (1) {
+		DRM_ERROR("About to do something that's nasty");
+		drm_dp_dpcd_writeb(ctx->aux, DP_EDP_CONFIGURATION_SET, 1);
+	}
+
 
 	/* set the lane count on the sink */
 	reg8 = ctx->lane_count;
