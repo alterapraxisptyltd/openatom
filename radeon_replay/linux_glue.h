@@ -18,6 +18,8 @@
 #include "coreboot_glue.h"
 #include "radeon_util.h"
 
+#include <stdbool.h>
+
 #define BIT(x)					(1 << (x))
 #define DIV_ROUND_UP(n,d)			(((n) + (d) - 1) / (d))
 
@@ -47,6 +49,27 @@ struct radeon_i2c_chan {
 struct radeon_device {
 	int dummy;
 };
+
+struct radeon_transmitter {
+	uint8_t id;
+	unsigned int max_link_rate;
+	struct radeon_device *parent;
+	void (*update_drive_strength)(struct radeon_transmitter *self,
+				      uint8_t *drive, uint8_t num_lanes);
+};
+
+struct radeon_encoder {
+	uint8_t id;
+	bool pattern3_supported;
+	struct radeon_device *parent;
+	void (*set_dp_training_pattern)(struct radeon_encoder *self,
+					uint8_t pattern);
+};
+
+int radeon_dp_link_train(struct radeon_device *rdev,
+			 struct radeon_encoder *encoder,
+			 struct radeon_transmitter *transmitter,
+			 const uint8_t *dpcd);
 
 /* Video mode flags */
 /* bit compatible with the xorg definitions. */
