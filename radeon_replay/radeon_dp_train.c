@@ -17,20 +17,22 @@ struct dp_link_ctx {
 	uint8_t drive[4];
 	struct drm_dp_link link;
 	struct drm_dp_aux *aux;
-	unsigned int max_link_rate;
-	bool pattern3_supported;
 	bool use_pattern3;
 	uint8_t lane_count;
 	struct radeon_encoder *encoder;
 	struct radeon_transmitter *transmitter;
 };
 
-int probe_link(struct dp_link_ctx *ctx)
+int probe_link(struct dp_link_ctx *ctx, const uint8_t *dpcd)
 {
-	int err;
+	int err = 0;
 
-	err = drm_dp_dpcd_read(ctx->aux, DP_DPCD_REV,
-			       ctx->dpcd, sizeof(ctx->dpcd));
+	/* Skip reading DPCD if it's already been done before */
+	if (dpcd)
+		memcpy(ctx->dpcd, dpcd, sizeof(ctx->dpcd));
+	else
+		err = drm_dp_dpcd_read(ctx->aux, DP_DPCD_REV,
+				       ctx->dpcd, sizeof(ctx->dpcd));
 	if (err < 0)
 		return err;
 
@@ -46,7 +48,7 @@ int probe_link(struct dp_link_ctx *ctx)
 
 void decide_link_params(struct dp_link_ctx *ctx)
 {
-	if (ctx->pattern3_supported
+	if (ctx->encoder->pattern3_supported
 	   && (ctx->dpcd[DP_MAX_LANE_COUNT] & DP_TPS3_SUPPORTED)) {
 		DRM_DEBUG_KMS("Will use DP training pattern 3");
 		ctx->use_pattern3 = true;
@@ -55,7 +57,7 @@ void decide_link_params(struct dp_link_ctx *ctx)
 	}
 
 	/* Limit the link rate on what we are able to do */
-	ctx->link.rate = min(ctx->max_link_rate, ctx->link.rate);
+	ctx->link.rate = min(ctx->transmitter->max_link_rate, ctx->link.rate);
 	ctx->lane_count = min(ctx->lane_count, ctx->link.num_lanes);
 }
 
@@ -66,16 +68,13 @@ void prepare_sink(struct dp_link_ctx *ctx)
 	/* power up the sink */
 	drm_dp_link_power_up(ctx->aux, &ctx->link);
 
-	/* Skipped SS control */
 	/* possibly enable downspread on the sink */
 	reg8 = (ctx->dpcd[DP_MAX_DOWNSPREAD] & 0x1) ? DP_SPREAD_AMP_0_5 : 0;
 	drm_dp_dpcd_writeb(ctx->aux, DP_DOWNSPREAD_CTRL, reg8);
 
-	/* Skipped eDP control */
-	if (1) {
-		DRM_ERROR("About to do something that's nasty");
+	/* eDP: ALTERNATE_SCRAMBLER_RESET_CAPABLE */
+	if (ctx->dpcd[DP_EDP_CONFIGURATION_CAP] & 1)
 		drm_dp_dpcd_writeb(ctx->aux, DP_EDP_CONFIGURATION_SET, 1);
-	}
 
 
 	/* set the lane count on the sink */
@@ -263,7 +262,8 @@ static int train_channel_eq(struct dp_link_ctx *ctx)
 
 int radeon_dp_link_train(struct radeon_device *rdev,
 			 struct radeon_encoder *encoder,
-			 struct radeon_transmitter *transmitter)
+			 struct radeon_transmitter *transmitter,
+			 const uint8_t dpcd[DP_RECEIVER_CAP_SIZE])
 {
 	int ret;
 	struct dp_link_ctx context;
@@ -271,14 +271,12 @@ int radeon_dp_link_train(struct radeon_device *rdev,
 
 	/* FIXME: What are we doing here? */
 	ctx->aux = &my_aux;
-	ctx->max_link_rate = 540000;
-	ctx->pattern3_supported = true;
 	ctx->lane_count = 4;
 	ctx->encoder = encoder;
 	ctx->transmitter = transmitter;
 	/* ^^^ FIXME: Refactor that to something smarter/separate func ^^^ */
 
-	probe_link(ctx);
+	probe_link(ctx, dpcd);
 	decide_link_params(ctx);
 	prepare_sink(ctx);
 
