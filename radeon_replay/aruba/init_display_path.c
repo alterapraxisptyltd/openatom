@@ -254,21 +254,45 @@ extern void aruba_fuck_my_lute(struct radeon_device *rdev, uint8_t lut_id);
 void aruba_enable_grph_srfc(struct radeon_device *rdev, uint8_t surf, uint8_t enable,
 			    uint16_t h, uint16_t w, uint16_t pizditch);
 
-static void quick_link_training(struct radeon_device *rdev);
-
 static const uint8_t my_bpc = 6;
 static const uint8_t my_crtc = 0;
+static const uint8_t my_enc = 4;
 static const uint8_t my_pll = 2;
 static const uint8_t my_hpd = 0 + 1;
 static const uint8_t my_phy = 4;
 static const uint8_t my_lane_count = 1;
 
+static void xmit_drive(struct radeon_transmitter *self,
+		       uint8_t *drive, uint8_t num_lanes)
+{
+	aruba_transmitter_vsemph(self->parent, self->id, drive[0]);
+}
+
+static void enc_pattern(struct radeon_encoder *self, uint8_t pattern)
+{
+	if (pattern == DP_TRAINING_PATTERN_DISABLE) {
+		aruba_encoder_link_training_finish(self->parent, self->id);
+		return;
+	}
+
+	aruba_encoder_link_training_start(self->parent, self->id);
+	aruba_encoder_link_training_pattern(self->parent, self->id, pattern);
+}
+
 void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 {
+	int err;
 	struct drm_display_mode mode;
+	uint8_t dpcd[DP_RECEIVER_CAP_SIZE];
 	const uint32_t dp_rate = 270000;
 
 	memset(&mode, 0, sizeof(mode));
+
+	err = drm_dp_dpcd_read(&my_aux, DP_DPCD_REV, dpcd, sizeof(dpcd));
+	if (err < 0) {
+		DRM_ERROR("Could not probe DP link via AUX. Abortioning");
+		return;
+	}
 
 	fprintf(stderr, "void replay_int10_c3(void)\t// vbe_set_mode()\n{\n");
 	//c3_mambojumbo();
@@ -313,72 +337,35 @@ void set_video_mode_motherfucker(struct radeon_device *rdev, struct edid *edid)
 		TIMED_OUT("c2 buf again");
 	fprintf(stderr, "\t/* set_encoder_crtc_source */\n");
 	aruba_set_encoder_crtc_source(rdev, my_crtc, 0xc, 1);
-	aruba_encoder_video_off(rdev, 4);	// <- VBIOS doesn't do this
+	aruba_encoder_video_off(rdev, my_enc);	// <- VBIOS doesn't do this
 	fprintf(stderr, "\t/* encoder_setup_dp */\n");
-	aruba_encoder_setup_dp(rdev, 4, edid->pixel_clock, 1, my_bpc, dp_rate);
+	aruba_encoder_setup_dp(rdev, my_enc, edid->pixel_clock, 1, my_bpc, dp_rate);
 	fprintf(stderr, "\t/* encoder_setup_panel_mode */\n");
-	aruba_encoder_setup_panel_mode(rdev, 4, 0x1);
+	aruba_encoder_setup_panel_mode(rdev, my_enc, 0x1);
 
 	fprintf(stderr, "\t/* transmitter_enable */\n");
 	aruba_transmitter_enable(rdev, my_phy, my_lane_count, dp_rate, my_pll,
 			       0, 0x10, my_hpd + 1, 0);
+
+
+
+	struct radeon_encoder enc = {
+		.id = my_enc,
+		.pattern3_supported = true,
+		.parent = rdev,
+		.set_dp_training_pattern = &enc_pattern,
+	};
+	struct radeon_transmitter xmit = {
+		.id = my_phy,
+		.parent = rdev,
+		.max_link_rate = 540000,
+		.update_drive_strength = &xmit_drive,
+	};
 	fprintf(stderr, "\t/* quick_link_training */\n");
-	quick_link_training(rdev);
+	radeon_dp_link_train(rdev, &enc, &xmit, dpcd);
+
 	/* OK, this is it. We should  have something by now */
-}
-
-static void satanic_pattern(struct radeon_device *rdev, int pat)
-{
-	aruba_encoder_link_training_pattern(rdev, 4, pat);
-	drm_dp_dpcd_writeb(&my_aux, DP_TRAINING_PATTERN_SET, pat);
-}
-
-static void quick_link_training(struct radeon_device *rdev)
-{
-	uint8_t sts[DP_LINK_STATUS_SIZE];
-	uint8_t dpcd[DP_RECEIVER_CAP_SIZE];
-	struct drm_dp_link link;
-	struct drm_dp_aux *aux = &my_aux;
-	uint8_t world_of_zero[] = {0, 0, 0};
-
-	drm_dp_dpcd_read(aux, DP_DPCD_REV, dpcd, sizeof(dpcd));
-	drm_dp_link_probe(aux,  &link);
-	drm_dp_link_power_up(aux, &link);
-	fprintf(stderr, "\t/* link_training_start */\n");
-	aruba_encoder_link_training_start(rdev, 4);
-	drm_dp_link_configure(aux, &link);
-	drm_dp_dpcd_writeb(aux, DP_DOWNSPREAD_CTRL, DP_SPREAD_AMP_0_5);
-	drm_dp_dpcd_writeb(aux, DP_EDP_CONFIGURATION_SET, 1);
-	fprintf(stderr, "\t/* training_pattern 1 */\n");
-	aruba_encoder_link_training_pattern(rdev, 4, DP_TRAINING_PATTERN_1);
-
-	fprintf(stderr, "\t/* VSEMPH */\n");
-	aruba_transmitter_vsemph(rdev, 4, 0);
-	fprintf(stderr, "\t/* VSEMPH done */\n");
-	drm_dp_dpcd_writeb(aux, DP_TRAINING_PATTERN_SET, DP_TRAINING_PATTERN_1);
-	drm_dp_dpcd_write(aux, DP_TRAINING_LANE0_SET, world_of_zero, 3);
-	udelay(400);
-	while (1) {
-		drm_dp_link_train_clock_recovery_delay(dpcd);
-		drm_dp_dpcd_read_link_status(aux, sts);
-		if (drm_dp_clock_recovery_ok(sts, 1))
-			break;
-		break;
-	}
-
-	satanic_pattern(rdev, DP_TRAINING_PATTERN_2);
-	drm_dp_dpcd_write(aux, DP_TRAINING_LANE0_SET, world_of_zero, 3);
-	while (1) {
-		drm_dp_link_train_channel_eq_delay(dpcd);
-		drm_dp_dpcd_read_link_status(aux, sts);
-		break;
-	}
-	aruba_encoder_link_training_finish(rdev, 4);
-	drm_dp_dpcd_writeb(&my_aux, DP_TRAINING_PATTERN_SET, DP_TRAINING_PATTERN_DISABLE);
-
-	drm_dp_dpcd_read_link_status(aux, sts);
-
-	aruba_encoder_video_on(rdev, 4);
+	aruba_encoder_video_on(rdev, my_enc);
 
 	//aruba_lcd_blon(rdev);
 	/* extrenal encoder video enable */
@@ -386,7 +373,4 @@ static void quick_link_training(struct radeon_device *rdev)
 
 	if (aruba_blank_crtc(rdev, 0, false))
 		TIMED_OUT("when we were about to enable CRTC");
-
-	//vga_sr_read(0x01);
-	//vga_sr_write(0x01, 0x01);
 }
