@@ -382,33 +382,171 @@ void aruba_set_pixel_clock(struct radeon_device *rdev, enum pll_ids pll_id,
 
 	px_clk /= 10;
 
-	//   0006: COMP   cfg->ucPpll  <-  08
-	//   000a: JUMP_NotEqual  00b4
-	if (pll_id == ATOM_EXT_PLL1)
-		/* Should have called aruba_set_disp_eng_pll you son of a bitch! */
+	if (px_clk == 0)
 		return;
 
-	//   00b4: TEST   param[00]  [XXXX]  <-  00ffffff
-	//   00bb: JUMP_Equal  00d9
-	if (px_clk) {
-		/* vvv TODO: KILLME NOT USED vvv
-		 * //   00be: COMP   param[02]  [..X.]  <-  24
-		 * //   00c2: JUMP_NotEqual  00c9
-		 * if (cfg->ucTransmitterID == ENCODER_OBJECT_ID_INTERNAL_VCE)
-		 *	//   00c5: MOVE   param[02]  [.X..]  <-  00
-		 *	cfg->ucTransmitterID = ENCODER_OBJECT_ID_NONE;
-		 */
-		//   00c9: COMP   cfg->ucPpll  <-  02
-		//   00cd: JUMP_Above  0262
-		if (pll_id > ATOM_DCPLL)
-			goto l_0262;
-		//   00d0: CALL_TABLE  24  (GetPixelClock)
-		//DRM_ERROR("GetPixelClock unimplemented.\n");
-		//   00d2: TEST   param[02]  [X...]  <-  01
-		//   00d6: JUMP_Equal  0143
-		if (!(fags & PIXEL_CLOCK_V6_MISC_FORCE_PROG_PPLL))
-			goto l_0143;
+	if (crtc_id > 3)
+		return;
+
+	/* Should have called aruba_set_disp_eng_pll you son of a bitch! */
+	if (pll_id == ATOM_EXT_PLL1)
+		return;
+
+	/* vvv TODO: KILLME NOT USED vvv
+	 * //   00be: COMP   param[02]  [..X.]  <-  24
+	 * //   00c2: JUMP_NotEqual  00c9
+	 * if (cfg->ucTransmitterID == ENCODER_OBJECT_ID_INTERNAL_VCE)
+	 *	//   00c5: MOVE   param[02]  [.X..]  <-  00
+	 *	cfg->ucTransmitterID = ENCODER_OBJECT_ID_NONE;
+	 */
+	/* Lots of atom checks, but basically only continue with pll 0,1,2 */
+	if ((pll_id > ATOM_DCPLL) || (pll_id > ATOM_PPLL0)) {
+		//   026c: MOVE   WS_FB_WIN [XXXX]  <-  param[00]  [XXXX]
+		//   0270: CLEAR  WS_FB_WIN [X...]
+		//   0273: CLEAR  WS_REMIND/HI32 [XXXX]
+		//   0276: MOVE   WS_REMIND/HI32 [...X]  <-  param[02]  [X...]
+		//   027a: AND    WS_REMIND/HI32 [...X]  <-  0c
+		//   027e: SHIFT_RIGHT  WS_REMIND/HI32 [...X]  by  01
+		//   0282: SET_DATA_BLOCK  ff  (this table)
+		//   0284: ADD    WS_DATAPTR [..XX]  <-  03ba
+		//   0289: ADD    WS_DATAPTR [..XX]  <-  WS_REMIND/HI32 [..XX]
+		bpc_s = &bpc_tbl[(fags & 0xc) >> 2]; // bit_depth << 1
+		//   028d: MOVE   WS_REMIND/HI32 [...X]  <-  data[0001] [...X]
+		//   0292: MUL    WS_FB_WIN [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+		//   0296: MOVE   WS_REMIND/HI32 [...X]  <-  data[0000] [...X]
+		//   029b: DIV    WS_QUOT/LOW32 [XXXX]  <-  WS_REMIND/HI32 [XXXX]
+		/* FIXME: Isn't this just ((px_clk * bpp * 8) / 24); ? */
+		hdmi_clk_div = (px_clk * bpc_s->bpp_div) / bpc_s->bpp_mul;
+		//   029f: MOVE   WS_REMIND/HI32 [XXXX]  <-  05f5e100
+		rem = 100000000;
+		//   02a6: DIV    WS_REMIND/HI32 [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+		hdmi_clk_div = rem / hdmi_clk_div;
+		//   02aa: COMP   WS_QUOT/LOW32 [XXXX]  <-  00010000
+		//   02b1: JUMP_Below  02b9
+		if (hdmi_clk_div >= 0x00010000)
+			//   02b4: MOVE   WS_QUOT/LOW32 [..XX]  <-  ffff
+			hdmi_clk_div |= 0xffff;
+		//   02b9: MOVE   param[00]  [...X]  <-  param[00]  [X...]
+		//   02bd: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
+		off = aruba_get_block_offest(crtc_id);
+		//   02bf: MOVE   reg[1b30]  [..XX]  <-  WS_QUOT/LOW32 [..XX]
+		radeon_mask(rdev, 0x6cc0 + off, 0xffff, hdmi_clk_div & 0xffff);
+		//   02c4: SET_REG_BLOCK  0000
+		//   02c7: CLEAR  param[03]  [XXXX]
+		//   02ca: MOVE   param[03]  [...X]  <-  param[00]  [X...]
+		//   02ce: SHIFT_LEFT  param[03]  [..XX]  by  02
+		//   02d2: COMP   param[02]  [.X..]  <-  00
+		//   02d6: JUMP_NotEqual  0316
+		if (encoder_mode == 0) {
+			//   02d9: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
+			off = crtc_id << 4;
+			//   02dd: MUL    WS_FB_WIN [XXXX]  <-  0000ea60
+			//   02e4: MOVE   WS_FB_WIN [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+			win = px_clk * 60000;
+			//   02e8: COMP   reg[0141]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
+			//   02ed: JUMP_NotEqual  02f8
+			if (radeon_read(rdev, 0x504 + off) == win) {
+				//   02f0: TEST   reg[0140]  [...X]  <-  10
+				//   02f5: JUMP_NotEqual  0377
+				if (radeon_read(rdev, 0x500 + off) & BIT(4))
+					return;
+			};
+			//   02f8: SET_REG_BLOCK  0000
+			//   02fb: CLEAR  param[00]  [..X.]
+			//   02fe: CALL_TABLE  23  (EnableCRTC)
+			aruba_enable_crtc(rdev, crtc_id, 0);
+			//   0300: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
+			//   0304: AND    reg[0140]  [...X]  <-  ef
+			radeon_mask(rdev, 0x500 + off, BIT(4), 0);
+			//   0309: MOVE   reg[0141]  [XXXX]  <-  WS_FB_WIN [XXXX]
+			radeon_write(rdev, 0x504 + off, win);
+			//   030e: OR     reg[0140]  [...X]  <-  10
+			radeon_mask(rdev, 0x500 + off, 0, BIT(4));
+			//   0313: JUMP   0377
+			return;
+		}
+		//   0316: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
+		off = crtc_id << 4;
+		//   031a: MOVE   WS_FB_WIN [...X]  <-  param[02]  [X...]
+		//   031e: AND    WS_FB_WIN [...X]  <-  0c
+		//   0322: SHIFT_LEFT  WS_FB_WIN [...X]  by  02
+		//   0326: OR     WS_FB_WIN [...X]  <-  01
+		win = (fags & 0x0c) << 2 | 1;
+		//   032a: MOVE   param[02]  [.X..]  <-  cfg->ucPpll
+		//   032e: ADD    param[02]  [.X..]  <-  01
+		//   0332: COMP   cfg->ucPpll  <-  02
+		//   0336: JUMP_NotEqual  033c
+		if (pll_id == ATOM_PPLL0)
+			//   0339: CLEAR  param[02]  [.X..]
+			encoder_mode = 0;
+		//   033c: TEST   param[02]  [X...]  <-  01
+		//   0340: JUMP_NotEqual  035c
+		if (!(fags & PIXEL_CLOCK_V6_MISC_FORCE_PROG_PPLL)) {
+			//   0343: COMP   reg[0140]  [...X]  <-  param[02]  [.X..]
+			//   0348: JUMP_NotEqual  0357
+			if ((radeon_read(rdev, 0x500 + off) & 0xff) == (pll_id + 1)) {
+				//   034b: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
+				off = pll_id << 2;
+				//   034f: COMP   reg[0138]  [...X]  <-  WS_FB_WIN [...X]
+				//   0354: JUMP_Equal  0377
+				if ((radeon_read(rdev, 0x4e0 + off) & 0xff) == win)
+					return;
+			}
+			//   0357: CLEAR  param[00]  [..X.]
+			//   035a: CALL_TABLE  23  (EnableCRTC)
+			aruba_enable_crtc(rdev, crtc_id, 0);
+		}
+		//   035c: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
+		off = pll_id << 2;
+		//   0360: AND    reg[0138]  [...X]  <-  fe
+		radeon_mask(rdev, 0x4e0 + off, BIT(0), 0);
+		//   0365: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
+		off = crtc_id << 4;
+		//   0369: MOVE   reg[0140]  [...X]  <-  param[02]  [.X..]
+		radeon_mask(rdev, 0x500 + off, 0xff, encoder_mode);
+		//   036e: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
+		off = pll_id << 2;
+		//   0372: MOVE   reg[0138]  [...X]  <-  WS_FB_WIN [...X]
+		radeon_mask(rdev, 0x4e0 + off, 0xff, win);
+		//   0377: SET_REG_BLOCK  0000
+		//   037a: EOT
+		return;
+		//   037b:
+		//   037e: 2400047607d5 2a00047707d5 320004d705d5 390004d705d5 3f0004d806d5 4600
+		//         04d806d5 4c00043806d5 5100045804d5 5a00045904d5 ffff045a04d5
+		//   03ba: 0101050403020201
+		//                           CTB_DS  68 bytes
 	}
+	//   00d0: CALL_TABLE  24  (GetPixelClock)
+	//DRM_ERROR("GetPixelClock unimplemented.\n");
+	//   00d2: TEST   param[02]  [X...]  <-  01
+	//   00d6: JUMP_Equal  0143
+	if (!(fags & PIXEL_CLOCK_V6_MISC_FORCE_PROG_PPLL)) {
+		if (crtc_id <= 3) {
+			//   014a: MOVE   WS_FB_WIN [XXXX]  <-  param[00]  [XXXX]
+			//   014e: MOVE   param[00]  [...X]  <-  param[00]  [X...]
+			//   0152: OR     param[00]  [...X]  <-  80
+			//   0156: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
+			off = aruba_get_vga_ctl_offset(crtc_id);
+			//   0158: MOVE   param[00]  [XXXX]  <-  WS_FB_WIN [XXXX]
+			//   015c: TEST   param[02]  [X...]  <-  02
+			//   0160: JUMP_Equal  016e
+			/* FIXME: PIXEL_CLOCK_V6_MISC_VGA_MODE is unused */
+			if (fags & PIXEL_CLOCK_V6_MISC_VGA_MODE)
+				//   0163: MOVE   reg[00cc]  [XXXX]  <-  00010301
+				radeon_write(rdev, 0x330 + off, 0x10300 | BIT(0));
+			//   016b: JUMP   0174
+			else
+				//   016e: AND    reg[00cc]  [.XX.]  <-  fefc
+				radeon_mask(rdev, 0x330 + off, 0x10300, 0);
+		}
+		//   0174: TEST   param[02]  [X...]  <-  01
+		//   0178: JUMP_Equal  0262
+		if (fags & PIXEL_CLOCK_V6_MISC_FORCE_PROG_PPLL)
+			program_pll(rdev, pll_id, pll_divs, fags);
+	
+	}
+
 	//   00d9: COMP   param[00]  [X...]  <-  03
 	//   00dd: JUMP_Above  00f1
 	if (crtc_id <= 3) {
@@ -420,162 +558,8 @@ void aruba_set_pixel_clock(struct radeon_device *rdev, enum pll_ids pll_id,
 		aruba_enable_crtc(rdev, crtc_id, 0);
 	}
 
-	/* Lots of atom checks, but basically only continue with pll 0,1,2 */
-	if (pll_id > ATOM_PPLL0)	// same as ATOM_DCPLL
-		return;
-
 	shutdown_pll(rdev, pll_id);
-	//   0135: TEST   param[00]  [XXXX]  <-  00ffffff
-	//   013c: JUMP_Equal  0377
-	if (px_clk == 0)
-		return;
 	//   013f: MOVE   WS_REMIND/HI32 [..XX]  <-  WS_REGPTR [..XX]
- l_0143:
-	//   0143: COMP   param[00]  [X...]  <-  03
-	//   0147: JUMP_Above  0174
-	if (crtc_id <= 3) {
-		//   014a: MOVE   WS_FB_WIN [XXXX]  <-  param[00]  [XXXX]
-		//   014e: MOVE   param[00]  [...X]  <-  param[00]  [X...]
-		//   0152: OR     param[00]  [...X]  <-  80
-		//   0156: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
-		off = aruba_get_vga_ctl_offset(crtc_id);
-		//   0158: MOVE   param[00]  [XXXX]  <-  WS_FB_WIN [XXXX]
-		//   015c: TEST   param[02]  [X...]  <-  02
-		//   0160: JUMP_Equal  016e
-		/* FIXME: PIXEL_CLOCK_V6_MISC_VGA_MODE is unused */
-		if (fags & PIXEL_CLOCK_V6_MISC_VGA_MODE)
-			//   0163: MOVE   reg[00cc]  [XXXX]  <-  00010301
-			radeon_write(rdev, 0x330 + off, 0x10300 | BIT(0));
-		//   016b: JUMP   0174
-		else
-			//   016e: AND    reg[00cc]  [.XX.]  <-  fefc
-			radeon_mask(rdev, 0x330 + off, 0x10300, 0);
-	}
-	//   0174: TEST   param[02]  [X...]  <-  01
-	//   0178: JUMP_Equal  0262
-	if (fags & PIXEL_CLOCK_V6_MISC_FORCE_PROG_PPLL)
-		program_pll(rdev, pll_id, pll_divs, fags);
- l_0262:
-	//   0262: SET_REG_BLOCK  0000
-	//   0265: COMP   param[00]  [X...]  <-  03
-	//   0269: JUMP_Above  0377
-	if (crtc_id > 3)
-		return;
-	//   026c: MOVE   WS_FB_WIN [XXXX]  <-  param[00]  [XXXX]
-	//   0270: CLEAR  WS_FB_WIN [X...]
-	//   0273: CLEAR  WS_REMIND/HI32 [XXXX]
-	//   0276: MOVE   WS_REMIND/HI32 [...X]  <-  param[02]  [X...]
-	//   027a: AND    WS_REMIND/HI32 [...X]  <-  0c
-	//   027e: SHIFT_RIGHT  WS_REMIND/HI32 [...X]  by  01
-	//   0282: SET_DATA_BLOCK  ff  (this table)
-	//   0284: ADD    WS_DATAPTR [..XX]  <-  03ba
-	//   0289: ADD    WS_DATAPTR [..XX]  <-  WS_REMIND/HI32 [..XX]
-	bpc_s = &bpc_tbl[(fags & 0xc) >> 2]; // bit_depth << 1
-	//   028d: MOVE   WS_REMIND/HI32 [...X]  <-  data[0001] [...X]
-	//   0292: MUL    WS_FB_WIN [XXXX]  <-  WS_REMIND/HI32 [XXXX]
-	//   0296: MOVE   WS_REMIND/HI32 [...X]  <-  data[0000] [...X]
-	//   029b: DIV    WS_QUOT/LOW32 [XXXX]  <-  WS_REMIND/HI32 [XXXX]
-	/* FIXME: Isn't this just ((px_clk * bpp * 8) / 24); ? */
-	hdmi_clk_div = (px_clk * bpc_s->bpp_div) / bpc_s->bpp_mul;
-	//   029f: MOVE   WS_REMIND/HI32 [XXXX]  <-  05f5e100
-	rem = 100000000;
-	//   02a6: DIV    WS_REMIND/HI32 [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	hdmi_clk_div = rem / hdmi_clk_div;
-	//   02aa: COMP   WS_QUOT/LOW32 [XXXX]  <-  00010000
-	//   02b1: JUMP_Below  02b9
-	if (hdmi_clk_div >= 0x00010000)
-		//   02b4: MOVE   WS_QUOT/LOW32 [..XX]  <-  ffff
-		hdmi_clk_div |= 0xffff;
-	//   02b9: MOVE   param[00]  [...X]  <-  param[00]  [X...]
-	//   02bd: CALL_TABLE  14  (ASIC_StaticPwrMgtStatusChange/SetUniphyInstance)
-	off = aruba_get_block_offest(crtc_id);
-	//   02bf: MOVE   reg[1b30]  [..XX]  <-  WS_QUOT/LOW32 [..XX]
-	radeon_mask(rdev, 0x6cc0 + off, 0xffff, hdmi_clk_div & 0xffff);
-	//   02c4: SET_REG_BLOCK  0000
-	//   02c7: CLEAR  param[03]  [XXXX]
-	//   02ca: MOVE   param[03]  [...X]  <-  param[00]  [X...]
-	//   02ce: SHIFT_LEFT  param[03]  [..XX]  by  02
-	//   02d2: COMP   param[02]  [.X..]  <-  00
-	//   02d6: JUMP_NotEqual  0316
-	if (encoder_mode == 0) {
-		//   02d9: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
-		off = crtc_id << 4;
-		//   02dd: MUL    WS_FB_WIN [XXXX]  <-  0000ea60
-		//   02e4: MOVE   WS_FB_WIN [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-		win = px_clk * 60000;
-		//   02e8: COMP   reg[0141]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-		//   02ed: JUMP_NotEqual  02f8
-		if (radeon_read(rdev, 0x504 + off) == win) {
-			//   02f0: TEST   reg[0140]  [...X]  <-  10
-			//   02f5: JUMP_NotEqual  0377
-			if (radeon_read(rdev, 0x500 + off) & BIT(4))
-				return;
-		};
-		//   02f8: SET_REG_BLOCK  0000
-		//   02fb: CLEAR  param[00]  [..X.]
-		//   02fe: CALL_TABLE  23  (EnableCRTC)
-		aruba_enable_crtc(rdev, crtc_id, 0);
-		//   0300: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
-		//   0304: AND    reg[0140]  [...X]  <-  ef
-		radeon_mask(rdev, 0x500 + off, BIT(4), 0);
-		//   0309: MOVE   reg[0141]  [XXXX]  <-  WS_FB_WIN [XXXX]
-		radeon_write(rdev, 0x504 + off, win);
-		//   030e: OR     reg[0140]  [...X]  <-  10
-		radeon_mask(rdev, 0x500 + off, 0, BIT(4));
-		//   0313: JUMP   0377
-		return;
-	}
-	//   0316: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
-	off = crtc_id << 4;
-	//   031a: MOVE   WS_FB_WIN [...X]  <-  param[02]  [X...]
-	//   031e: AND    WS_FB_WIN [...X]  <-  0c
-	//   0322: SHIFT_LEFT  WS_FB_WIN [...X]  by  02
-	//   0326: OR     WS_FB_WIN [...X]  <-  01
-	win = (fags & 0x0c) << 2 | 1;
-	//   032a: MOVE   param[02]  [.X..]  <-  cfg->ucPpll
-	//   032e: ADD    param[02]  [.X..]  <-  01
-	//   0332: COMP   cfg->ucPpll  <-  02
-	//   0336: JUMP_NotEqual  033c
-	if (pll_id == ATOM_PPLL0)
-		//   0339: CLEAR  param[02]  [.X..]
-		encoder_mode = 0;
-	//   033c: TEST   param[02]  [X...]  <-  01
-	//   0340: JUMP_NotEqual  035c
-	if (!(fags & PIXEL_CLOCK_V6_MISC_FORCE_PROG_PPLL)) {
-		//   0343: COMP   reg[0140]  [...X]  <-  param[02]  [.X..]
-		//   0348: JUMP_NotEqual  0357
-		if ((radeon_read(rdev, 0x500 + off) & 0xff) == (pll_id + 1)) {
-			//   034b: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
-			off = pll_id << 2;
-			//   034f: COMP   reg[0138]  [...X]  <-  WS_FB_WIN [...X]
-			//   0354: JUMP_Equal  0377
-			if ((radeon_read(rdev, 0x4e0 + off) & 0xff) == win)
-				return;
-		}
-		//   0357: CLEAR  param[00]  [..X.]
-		//   035a: CALL_TABLE  23  (EnableCRTC)
-		aruba_enable_crtc(rdev, crtc_id, 0);
-	}
-	//   035c: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
-	off = pll_id << 2;
-	//   0360: AND    reg[0138]  [...X]  <-  fe
-	radeon_mask(rdev, 0x4e0 + off, BIT(0), 0);
-	//   0365: MOVE   WS_REGPTR [..XX]  <-  param[03]  [..XX]
-	off = crtc_id << 4;
-	//   0369: MOVE   reg[0140]  [...X]  <-  param[02]  [.X..]
-	radeon_mask(rdev, 0x500 + off, 0xff, encoder_mode);
-	//   036e: MOVE   WS_REGPTR [...X]  <-  cfg->ucPpll
-	off = pll_id << 2;
-	//   0372: MOVE   reg[0138]  [...X]  <-  WS_FB_WIN [...X]
-	radeon_mask(rdev, 0x4e0 + off, 0xff, win);
-	//   0377: SET_REG_BLOCK  0000
-	//   037a: EOT
-	return;
-	//   037b:
-	//   037e: 2400047607d5 2a00047707d5 320004d705d5 390004d705d5 3f0004d806d5 4600
-	//         04d806d5 4c00043806d5 5100045804d5 5a00045904d5 ffff045a04d5
-	//   03ba: 0101050403020201
-	//                           CTB_DS  68 bytes
 }
 
 enum divisor_type {
@@ -614,10 +598,10 @@ int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t vco_freq_mhz,
 			   uint32_t clock_khz, uint32_t default_clock_khz,
 			   uint16_t pcie_ss_percent)
 {
-	const uint32_t rclock = 60000;
+	const uint32_t rclock = 60 * 1000;
 
 	uint8_t pll;
-	uint32_t ohman, clock_fuck;
+	uint32_t desired_clock, pll_reclock;
 
 	//   000d: CLEAR  reg[1841]  [...X]
 	radeon_mask(rdev, 0x1841 << 2, 0xff, 0);
@@ -627,9 +611,9 @@ int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t vco_freq_mhz,
 	//   0019: CLEAR  param[01]  [X...]
 	//   001c: MOVE   param[00]  [XXXX]  <-  0000ea60
 	//   0023: CALL_TABLE  3c  (ComputeMemoryEnginePLL)
-	ohman = rclock * 10;
-	pll = aruba_compute_engine_pll(vco_freq_mhz, &ohman);
-	ohman /= 10;
+	desired_clock = rclock * 10;
+	pll = aruba_compute_engine_pll(vco_freq_mhz, &desired_clock);
+	desired_clock /= 10;
 	if (aruba_program_ext_pll(rdev, pll, DIV_REFCLOCK) < 0) {
 		DRM_ERROR("Refclock EXTPLL failed to lock!!!");
 		return -ETIMEDOUT;
@@ -639,26 +623,22 @@ int aruba_set_disp_eng_pll(struct radeon_device *rdev, uint32_t vco_freq_mhz,
 	//   0048: SET_DATA_BLOCK  1e  (IntegratedSystemInfo)
 	//   004a: MOVE   WS_REMIND/HI32 [..XX]  <-  data[0110] [..XX]
 	//   004f: MUL    param[00]  [XXXX]  <-  WS_REMIND/HI32 [XXXX]
-	//quot = ohman * usPCIEClkSSPercentage;
+	//quot = desired_clock * usPCIEClkSSPercentage;
 	//   0053: DIV    WS_QUOT/LOW32 [XXXX]  <-  00004e20
 	//quot /= ulDefaultEngineClock;
 	//   005a: SUB    param[00]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	ohman -= ohman * pcie_ss_percent / default_clock_khz;
+	desired_clock -= desired_clock * pcie_ss_percent / default_clock_khz;
 	//   005e: MUL    param[00]  [XXXX]  <-  0000ea60
-	clock_fuck = ohman * rclock;
-	//   0065: MOVE   reg[0142]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	radeon_write(rdev, 0x142 << 2, clock_fuck);
-	//   006a: MOVE   reg[0146]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	radeon_write(rdev, 0x146 << 2, clock_fuck);
-	//   006f: MOVE   reg[014a]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	radeon_write(rdev, 0x14a << 2, clock_fuck);
-	//   0074: MOVE   reg[014e]  [XXXX]  <-  WS_QUOT/LOW32 [XXXX]
-	radeon_write(rdev, 0x14e << 2, clock_fuck);
+	pll_reclock = desired_clock * rclock;
+
+	for (int i = 0; i < 13; i += 4)
+		radeon_write(rdev, (0x142 + i) << 2, pll_reclock);
+
 	//   0079: MOVE   param[00]  [XXXX]  <-  param[01]  [XXXX]
 	//   007d: CALL_TABLE  3c  (ComputeMemoryEnginePLL)
-	ohman = clock_khz;
-	pll = aruba_compute_engine_pll(vco_freq_mhz, &ohman);
-	ohman /= 10;
+	desired_clock = clock_khz;
+	pll = aruba_compute_engine_pll(vco_freq_mhz, &desired_clock);
+	desired_clock /= 10;
 	if (aruba_program_ext_pll(rdev, pll, DIV_ENGINE) < 0) {
 		DRM_ERROR("Engine EXTPLL failed to lock!!!");
 		return -ETIMEDOUT;
